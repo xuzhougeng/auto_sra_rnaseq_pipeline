@@ -3,15 +3,7 @@ import pandas as pd
 import numpy as np
 
 
-"""
-SRA数据自动处理流程, 要求，必须有SRR和paired两列
-如果SRR存在多个, 在解压缩完成之后会进行合并
 
-requirement:
-- sratoolkit
-- fastp
-- star
-"""
 configfile: "config.yaml"
 
 sample_file = config['sample']
@@ -20,8 +12,10 @@ df = pd.read_csv(sample_file, sep = "\t")
 
 samples = df['GSM'].to_list()
 
-result_files = expand('02_read_align/{sample}_Aligned.sortedByCoord.out.bam', sample = samples)
-all_counts   = expand('02_read_align/{sample}_ReadsPerGene.out.tab', sample = samples)
+bam_files   = expand('02_read_align/{sample}_Aligned.sortedByCoord.out.bam', sample = samples)
+all_counts  = expand('02_read_align/{sample}_ReadsPerGene.out.tab', sample = samples)
+
+final_count = sample_file + ".tsv"
 
 # get the input data of R1 and R2 or single
 def get_merged_input_data(wildcards):
@@ -61,7 +55,8 @@ def get_input_data(wildcards):
 
 rule all:
     input:
-        result_files
+        bam_files,
+        all_counts
 
 
 # download data from NCBI
@@ -72,7 +67,7 @@ rule data_downloader:
     conda:
         "envs/download.yaml"
     shell:"""
-    prefetch -O {input} -O sra 
+    prefetch -O sra {params.sra_id}
     """
 
 # covert the fastq
@@ -159,8 +154,8 @@ rule align_and_count:
         prefix = lambda wildcards : wildcards.sample,
         GTF = config['GTF']
     output: 
-        bam = "02_read_align/{sample}_Aligned.sortedByCoord.out.bam"
-        count = "02_read_align/{sample}_ReadsPerGene.out.tab"
+        bam = "02_read_align/{sample}_Aligned.sortedByCoord.out.bam",
+        counts = "02_read_align/{sample}_ReadsPerGene.out.tab"
     threads: 40
     conda:
         "envs/align.yaml"
@@ -177,6 +172,10 @@ rule align_and_count:
     """
 
 # rule merge count
-rule combine_count:
-    input: all_counts
-    output: "expreSet.tsv"
+# rule combine_count:
+#     input: all_counts
+#     output: final_count
+#     run:
+#         for f in all_counts:
+            
+#         df.to_csv(final_count, sep='\t', encoding='utf-8')
