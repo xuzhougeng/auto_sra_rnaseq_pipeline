@@ -103,7 +103,8 @@ rule data_downloader:
     shell:"""
     prefetch -O sra {params.sra_id} && \
         [[ ! -f {output} ]] && \
-        mv sra/{params.sra_id}.sra {output}
+        mv sra/{params.sra_id}.sra {output} || \
+        echo "{params.sra_id} finished download"
     """
 
 include: "rules/single_end_process.smk" # single end
