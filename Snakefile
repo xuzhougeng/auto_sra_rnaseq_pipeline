@@ -101,7 +101,9 @@ rule data_downloader:
     conda:
         "envs/download.yaml"
     shell:"""
-    prefetch -O sra {params.sra_id} && 
+    prefetch -O sra {params.sra_id} && \
+        [[ ! -f {output} ]] && \
+        mv sra/{sra}.sra {output}
     """
 
 include: "rules/single_end_process.smk" # single end
