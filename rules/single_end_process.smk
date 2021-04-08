@@ -10,7 +10,7 @@ def get_merged_input_data(wildcards):
 
 
 rule data_conversion_single:
-    input: "sra/{sra}.sra"
+    input: "sra/{sra}/{sra}.sra"
     wildcard_constraints:
         sra="[A-Za-z0-9]+"
     output: temp("sra/{sra}.fastq")

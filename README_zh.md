@@ -16,17 +16,20 @@ git clone https://gitclone.com/github.com/xuzhougeng/auto_sra_rnaseq_pipeline.gi
 
 - pigz: parallel gzip
 - snakemake
-- sra-tool
+- sra-tools=2.10.8
 - fastp
 - star
 
 我们可以使用bioconda来安装相关环境
 
 ```bash
-conda create -n rna_seq snakemake sra-tools fastp star
+conda create -n rna_seq snakemake sra-tools>2.10.0 fastp star
 # activate the environment
 conda activate rna_seq
 ```
+
+sra-tools的版本必须大于2.10.0, 因为之前版本会直接在目录下输出sra,但是新版本会新建一个以SRA编号
+命名的文件夹，然后在该目录输出sra文件
 
 我们需要构建STAR索引，以及准备参考基因组对应的GTF
 

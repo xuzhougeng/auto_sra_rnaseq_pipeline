@@ -19,7 +19,7 @@ def get_merged_input_data_R2(wildcards):
 
 
 rule data_conversion_pair:
-    input: "sra/{sra}.sra"
+    input: "sra/{sra}/{sra}.sra"
     wildcard_constraints:
         sra="[A-Za-z0-9]+"
     output:

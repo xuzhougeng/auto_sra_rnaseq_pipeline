@@ -90,7 +90,7 @@ rule all:
 rule data_downloader:
     params: 
         sra_id = lambda wildcards: wildcards.sra
-    output: temp("sra/{sra}.sra")
+    output: temp("sra/{sra}/{sra}.sra")
     conda:
         "envs/download.yaml"
     shell:"""
