@@ -52,8 +52,7 @@ metadata_df['key'] = np.repeat(list(metadata_dict.keys()), rep_len )
 
 samples =  metadata_df['GSM'].to_list()
 
-bam_files   = expand('02_read_align/{sample}_Aligned.sortedByCoord.out.bam', sample = samples)
-all_counts  = expand('02_read_align/{sample}_ReadsPerGene.out.tab', sample = samples)
+bigwig_files = expand('04_bigwig/{sample}.bw', sample = samples)
 
 # get the input data of R1 and R2 or single
 
@@ -83,7 +82,8 @@ def get_counts_file(wildcards):
 localrules: all, data_downloader
 rule all:
     input:
-        counts_file
+        counts_file,
+        bigwig_files
 
 
 # download data from NCBI
@@ -112,7 +112,7 @@ rule align_and_count:
         prefix = lambda wildcards : wildcards.sample,
         GTF = config['GTF']
     output: 
-        bam = "02_read_align/{sample}_Aligned.sortedByCoord.out.bam",
+        bam = temp("02_read_align/{sample}_Aligned.sortedByCoord.out.bam"),
         counts = "02_read_align/{sample}_ReadsPerGene.out.tab"
     priority: 10
     threads: config['star_threads']
@@ -130,6 +130,21 @@ rule align_and_count:
         --quantMode GeneCounts --sjdbGTFfile {params.GTF}
     """
 
+rule bamtobw:
+    input: "02_read_align/{sample}_Aligned.sortedByCoord.out.bam"
+    output: "04_bigwig/{sample}.bw"
+    params:
+        bs = "50",
+        gs = "2913022398",
+        norm = "BPM"
+    threads: 10
+    shell:"""
+    bamCoverage -p {threads} \
+        --binSize {params.bs} \
+        --effectiveGenomeSize {params.gs} \
+        --normalizeUsing {params.norm} \
+        -b {input} -o {output}
+    """
 
 rule combine_count:
     input: get_counts_file
