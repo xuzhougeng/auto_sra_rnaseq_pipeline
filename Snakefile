@@ -1,4 +1,5 @@
 import os
+import sys
 import glob
 import json
 import pandas as pd
@@ -45,9 +46,13 @@ for file in sample_files:
 
 
 # 记录所有元信息, 用于后续查询
-metadata_df = pd.concat(metadata_dict.values(), ignore_index=True)
-rep_len = list(map(len, metadata_dict.values()))
-metadata_df['key'] = np.repeat(list(metadata_dict.keys()), rep_len )
+if len(counts_file) > 0:
+    metadata_df = pd.concat(metadata_dict.values(), ignore_index=True)
+    rep_len = list(map(len, metadata_dict.values()))
+    metadata_df['key'] = np.repeat(list(metadata_dict.keys()), rep_len )
+else:
+    print("no job to do")
+    sys.exit(0)
 
 
 samples =  metadata_df['GSM'].to_list()
