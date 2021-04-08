@@ -150,6 +150,8 @@ rule combine_count:
     input: get_counts_file
     output: "03_merged_counts/dataset{number}_{GSE_ID}_{gene}.tsv"
     run:
+        if not os.path.exists("03_merged_counts"):
+            os.mkir("03_merged_counts")
         df = pd.read_csv(input[0],header=None, sep="\t",index_col=0 )
         df = df.iloc[:,[0]]
         rename_dict = {1: os.path.basename(input[0]).replace('_ReadsPerGene.out.tab','')}

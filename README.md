@@ -57,8 +57,10 @@ cd results
 另外metadata必须包括如下列， GSM, GSE, gene, SRR, 否则程序运行绝对失败
 
 ```bash
-snakemake --restart-times 10 -j 120  --configfile config.yaml -s /path/to/auto_sra_rnaseq_pipeline/Snakefile 
+snakemake --rerun-incomplete --restart-times 10 -j 120  --configfile config.yaml -s /path/to/auto_sra_rnaseq_pipeline/Snakefile 
 ```
+
+`--rerun-incomplete` 表示会重跑不完整的
 
 `-restart-times 10`表示在失败的时候会重新尝试10次 
 
