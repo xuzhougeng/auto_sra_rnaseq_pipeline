@@ -1,6 +1,7 @@
 
 # RNA-seq automation process pipeline 
 
+中文版: [README_zh.md](./README_zh.md)
 
 ## Usage
 
