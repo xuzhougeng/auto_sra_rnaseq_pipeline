@@ -20,17 +20,17 @@ rule data_conversion_single:
 
 rule merge_data:
     input: get_merged_input_data
-    output: "00_raw_data/{sample}.fq.gz"
+    output: temp("00_raw_data/{sample}.fq.gz")
     shell: "cat {input} | pigz > {output}"
 
 rule data_clean_single:
-    input: "00_raw_data/{sample}.fq.gz"
+    input: temp("00_raw_data/{sample}.fq.gz")
     wildcard_constraints:
         sample="[A-Za-z0-9]+"
     params:
         json = lambda wildcards : os.path.join( "qc",  wildcards.sample + '.json'),
         html = lambda wildcards : os.path.join( "qc",  wildcards.sample + '.html')
-    output: "01_clean_data/{sample}.fq.gz"
+    output: temp("01_clean_data/{sample}.fq.gz")
     conda:
         "envs/preprocess.yaml"
     shell:"""
