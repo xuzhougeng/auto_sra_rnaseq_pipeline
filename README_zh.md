@@ -14,11 +14,11 @@ git clone https://gitclone.com/github.com/xuzhougeng/auto_sra_rnaseq_pipeline.gi
 
 在服务器上安装依赖如下的依赖环境
 
-- pigz: parallel gzip
+- [pigz](https://zlib.net/pigz/): 并行化文件压缩
 - snakemake
 - sra-tools=2.10.8
 - fastp
-- star
+- star: 如果需要在多台服务器运行该流程，需要确保star的版本一致
 
 我们可以使用bioconda来安装相关环境
 
