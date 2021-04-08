@@ -80,7 +80,7 @@ def get_counts_file(wildcards):
     return  count_files
 
     
-
+localrules: all, data_downloader
 rule all:
     input:
         counts_file
