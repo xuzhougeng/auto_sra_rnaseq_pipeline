@@ -24,7 +24,7 @@ rule merge_data:
     shell: "cat {input} | pigz > {output}"
 
 rule data_clean_single:
-    input: temp("00_raw_data/{sample}.fq.gz")
+    input: "00_raw_data/{sample}.fq.gz"
     wildcard_constraints:
         sample="[A-Za-z0-9]+"
     params:
