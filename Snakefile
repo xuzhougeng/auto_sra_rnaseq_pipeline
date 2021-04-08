@@ -132,6 +132,8 @@ rule align_and_count:
 rule build_bam_index:
     input: "02_read_align/{sample}_Aligned.sortedByCoord.out.bam"
     output: temp("02_read_align/{sample}_Aligned.sortedByCoord.out.bam.bai")
+    conda:
+        "envs/align.yaml"
     threads: 4
     shell:"samtools index -@ {threads} {input}"
 
@@ -144,6 +146,8 @@ rule bamtobw:
         bs = "50",
         gs = "2913022398",
         norm = "BPM"
+    conda:
+        "envs/align.yaml"
     threads: 10
     shell:"""
     bamCoverage -p {threads} \
