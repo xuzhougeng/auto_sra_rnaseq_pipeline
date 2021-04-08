@@ -19,6 +19,7 @@ git clone https://gitclone.com/github.com/xuzhougeng/auto_sra_rnaseq_pipeline.gi
 - snakemake
 - sra-tools=2.10.8
 - fastp
+- samtools
 - star: 如果需要在多台服务器运行该流程，需要确保star的版本一致
 - deeptools
 
