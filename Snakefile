@@ -46,6 +46,7 @@ for file in sample_files:
 
 
 # 记录所有元信息, 用于后续查询
+# 如果counts_file 没有内容，则直接退出
 if len(counts_file) > 0:
     metadata_df = pd.concat(metadata_dict.values(), ignore_index=True)
     rep_len = list(map(len, metadata_dict.values()))
@@ -100,7 +101,7 @@ rule data_downloader:
     conda:
         "envs/download.yaml"
     shell:"""
-    prefetch -O sra {params.sra_id}
+    prefetch -O sra {params.sra_id} && 
     """
 
 include: "rules/single_end_process.smk" # single end
@@ -132,7 +133,8 @@ rule align_and_count:
     	--outFileNamePrefix 02_read_align/{params.prefix}_ \
     	--outSAMtype BAM SortedByCoordinate \
     	--outBAMsortingThreadN 10 \
-        --quantMode GeneCounts --sjdbGTFfile {params.GTF}
+        --quantMode GeneCounts --sjdbGTFfile {params.GTF} &&
+        rm -rf 02_read_align/{params.prefix}__STARgenome
     """
 rule build_bam_index:
     input: "02_read_align/{sample}_Aligned.sortedByCoord.out.bam"
