@@ -91,6 +91,7 @@ rule data_downloader:
     params: 
         sra_id = lambda wildcards: wildcards.sra
     output: temp("sra/{sra}/{sra}.sra")
+    threads: config['download_threads']
     conda:
         "envs/download.yaml"
     shell:"""
@@ -113,7 +114,8 @@ rule align_and_count:
     output: 
         bam = "02_read_align/{sample}_Aligned.sortedByCoord.out.bam",
         counts = "02_read_align/{sample}_ReadsPerGene.out.tab"
-    threads: 40
+    priority: 10
+    threads: config['star_threads']
     conda:
         "envs/align.yaml"
     shell:"""

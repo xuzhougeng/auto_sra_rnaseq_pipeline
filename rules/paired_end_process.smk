@@ -31,13 +31,15 @@ rule data_conversion_pair:
 
 rule merge_R1_data:
     input: get_merged_input_data_R1
+    threads: config['pigz_threads']
     output: "00_raw_data/{sample}_R1.fq.gz"
-    shell: "cat {input} | pigz > {output}"
+    shell: "cat {input} | pigz -p {threads} > {output}"
 
 rule merge_R2_data:
     input: get_merged_input_data_R2
+    threads: config['pigz_threads']
     output: "00_raw_data/{sample}_R2.fq.gz"
-    shell: "cat {input} | pigz > {output}"
+    shell: "cat {input} | pigz -p {threads} > {output}"
 
 rule data_clean_pair:
     input:
@@ -53,7 +55,7 @@ rule data_clean_pair:
         r2 = "01_clean_data/{sample}_R2.fq.gz" 
     conda:
         "envs/preprocess.yaml"
-    threads: 8
+    threads: config['fastp_threads']
     shell:"""
 	fastp -w {threads} -i {input.r1} -I {input.r2} -o {output.r1} -O {output.r2} \
 		-j {params.json} -h {params.html}

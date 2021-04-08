@@ -1,11 +1,11 @@
 
 # RNA-seq automation process pipeline 
 
-中文版: [README_zh.md](./README_zh.md)
+[English Vesion](./README_en.md)
 
-## Usage
+## 使用方法
 
-First, clone this repos to local with gti
+将这个仓库克隆到本地
 
 ```bash
 git clone https://github.com/xuzhougeng/auto_sra_rnaseq_pipeline.git
@@ -13,23 +13,26 @@ git clone https://github.com/xuzhougeng/auto_sra_rnaseq_pipeline.git
 git clone https://gitclone.com/github.com/xuzhougeng/auto_sra_rnaseq_pipeline.git
 ```
 
-Then, install the requirement with mannual or with bioconda
+在服务器上安装依赖如下的依赖环境
 
-- pigz: parallel gzip
+- [pigz](https://zlib.net/pigz/): 并行化文件压缩
 - snakemake
-- sra-tool
+- sra-tools=2.10.8
 - fastp
-- star
+- star: 如果需要在多台服务器运行该流程，需要确保star的版本一致
 
-For example, we use bioconda to create a new environment for this pipeline
+我们可以使用bioconda来安装相关环境
 
 ```bash
-conda create -n rna_seq snakemake sra-tools fastp star
+conda create -n rna_seq snakemake sra-tools>2.10.0 fastp star
 # activate the environment
 conda activate rna_seq
 ```
 
-Next, preprare the STAR index and annotation file in gtf format for your genome.
+sra-tools的版本必须大于2.10.0, 因为之前版本会直接在目录下输出sra,但是新版本会新建一个以SRA编号
+命名的文件夹，然后在该目录输出sra文件
+
+我们需要构建STAR索引，以及准备参考基因组对应的GTF
 
 ```bash
 reference=/path/to/your/genome
@@ -41,7 +44,7 @@ STAR \
     --genomeFastaFiles ${reference}
 ```
 
-Create a project directory and copy the config.yaml in this repo
+创建一个项目文件夹，然后将我们仓库中的config.yaml 复制到该目录下，
 
 ```bash
 mkdir results
@@ -49,12 +52,22 @@ cp /path/to/config.yaml results/
 cd results
 ```
 
-Run this pipepline
+注意修改config.yaml的配置信息，其中metadata指的是存放metadata文件的目录，metadata文件必须以.txt结尾，否则不识别
+
+另外metadata必须包括如下列， GSM, GSE, gene, SRR, 否则程序运行绝对失败
 
 ```bash
-snakemake --restart-times 10 -j 120  --configfile config.yaml -s /path/to/auto_sra_rnaseq_pipeline/Snakefile  -n
+snakemake --restart-times 10 -j 120  --configfile config.yaml -s /path/to/auto_sra_rnaseq_pipeline/Snakefile 
 ```
 
-`-restart-times` will retry 10 times for failer jobs, if your know some rule will stop because of network
+`-restart-times 10`表示在失败的时候会重新尝试10次 
+
+## 配置文件说明
 
 
+如下参数控制不同规则的运行所需要的规则数
+
+- download_threads: 1
+- pigz_threads: 10
+- fastp_threads: 8
+- star_threads: 20
