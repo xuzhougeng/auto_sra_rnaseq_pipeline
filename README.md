@@ -14,6 +14,7 @@ git clone https://gitclone.com/github.com/xuzhougeng/auto_sra_rnaseq_pipeline.gi
 
 Then, install the requirement with mannual or with bioconda
 
+- pigz: parallel gzip
 - snakemake
 - sra-tool
 - fastp
@@ -50,7 +51,9 @@ cd results
 Run this pipepline
 
 ```bash
-snakemake -j 120  --configfile config.yaml -s /path/to/auto_sra_rnaseq_pipeline/Snakefile  -n
+snakemake --restart-times 10 -j 120  --configfile config.yaml -s /path/to/auto_sra_rnaseq_pipeline/Snakefile  -n
 ```
+
+`-restart-times` will retry 10 times for failer jobs, if your know some rule will stop because of network
 
 

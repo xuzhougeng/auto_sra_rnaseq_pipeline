@@ -1,50 +1,66 @@
 import os
+import glob
+import json
 import pandas as pd
 import numpy as np
-
+from collections import deque
 
 
 configfile: "config.yaml"
 
-sample_file = config['sample']
+# get metadata file directory
+metadata = config['metadata']
 
-df = pd.read_csv(sample_file, sep = "\t")
+file_dict = {}
+# file_dict.json:  key为GSE号的排序后组合, value为count+原始文件名
+# 每次处理新的文件的时候, 通过对key的查找，可以用来确定该文件是否已经处理过
 
-samples = df['GSM'].to_list()
+if os.path.exists("file_dict.json"):
+    with open("file_dict.json", "r") as f:
+        file_dict = json.load(f)
+
+
+# 新的文件
+
+counter = len(file_dict) # 已有的文件数
+
+counts_file = []    # 记录输出的tsv文件名
+metadata_dict = {}  # 字典, key为tsv文件名, value为对应的DataFrame
+
+sample_files = glob.glob( os.path.join(metadata,  "*.txt") )
+for file in sample_files:
+    df = pd.read_csv(file, sep = "\t")
+    dict_key = "_".join(sorted(df['GSM'].to_list()))
+    # 判断当前文件是否存在重复或是否已经处理
+    if dict_key not in file_dict:
+        file_dict[dict_key] = [ counter, file ]
+        
+        GSE_ID = np.unique(df['GSE'])[0]
+        gene   = np.unique(df['gene'])[0]
+        file_name = "03_merged_counts/dataset{}_{}_{}.tsv".format(counter, GSE_ID, gene)
+        
+        counts_file.append(file_name)
+        metadata_dict["{}_{}_{}".format(counter, GSE_ID, gene)] = df
+        counter += 1
+
+
+# 记录所有元信息, 用于后续查询
+metadata_df = pd.concat(metadata_dict.values(), ignore_index=True)
+rep_len = list(map(len, metadata_dict.values()))
+metadata_df['key'] = np.repeat(list(metadata_dict.keys()), rep_len )
+
+
+samples =  metadata_df['GSM'].to_list()
 
 bam_files   = expand('02_read_align/{sample}_Aligned.sortedByCoord.out.bam', sample = samples)
 all_counts  = expand('02_read_align/{sample}_ReadsPerGene.out.tab', sample = samples)
 
-final_count = sample_file + ".tsv"
-
 # get the input data of R1 and R2 or single
-def get_merged_input_data(wildcards):
-    sample = wildcards.sample
-
-    SRR_ID = df.loc[df['GSM'] == sample, "SRR"].tolist()[0]
-    SRR_ID = SRR_ID.split(",")
-    print(SRR_ID)
-
-    return [ "sra/{x}.fastq".format(x=x) for x in SRR_ID ]
-
-def get_merged_input_data_R1(wildcards):
-    sample = wildcards.sample
-
-    SRR_ID = df.loc[df['GSM'] == sample, "SRR"].tolist()[0]
-    SRR_ID = SRR_ID.split(",")
-
-    return [ "sra/{x}_1.fastq".format(x=x) for x in SRR_ID ]
-
-def get_merged_input_data_R2(wildcards):
-    sample = wildcards.sample
-
-    SRR_ID = df.loc[df['GSM'] == sample, "SRR"].tolist()[0]
-    SRR_ID = SRR_ID.split(",")
-
-    return [ "sra/{x}_2.fastq".format(x=x) for x in SRR_ID ]
 
 # get input GSM data
 def get_input_data(wildcards):
+    
+    df = metadata_df
     sample = wildcards.sample
     paired = df.loc[df['GSM'] == sample, 'paired'].tolist()[0]  == "PAIRED"
     if paired:
@@ -53,10 +69,21 @@ def get_input_data(wildcards):
     else:
         return [  os.path.join("01_clean_data", sample + '.fq.gz')]
 
+# get GSM ID
+def get_counts_file(wildcards):
+    number  = wildcards.number
+    GSE_ID = wildcards.GSE_ID
+    gene   = wildcards.gene
+    df = metadata_dict["{}_{}_{}".format(number, GSE_ID, gene)]
+    samples =  df['GSM'].to_list()
+    count_files = ["02_read_align/{sample}_ReadsPerGene.out.tab".format(sample=sample) for sample in samples]
+    return  count_files
+
+    
+
 rule all:
     input:
-        bam_files,
-        all_counts
+        counts_file
 
 
 # download data from NCBI
@@ -70,78 +97,8 @@ rule data_downloader:
     prefetch -O sra {params.sra_id}
     """
 
-# covert the fastq
-# for single
-rule data_conversion_single:
-    input: "sra/{sra}.sra"
-    wildcard_constraints:
-        sra="[A-Za-z0-9]+"
-    output: temp("sra/{sra}.fastq")
-    conda:
-        "envs/download.yaml"
-    shell:"fastq-dump {input} -O sra" 
-
-rule merge_data:
-    input: get_merged_input_data
-    output: "00_raw_data/{sample}.fq.gz"
-    shell: "cat {input} | pigz > {output}"
-
-rule data_clean_single:
-    input: "00_raw_data/{sample}.fq.gz"
-    wildcard_constraints:
-        sample="[A-Za-z0-9]+"
-    params:
-        json = lambda wildcards : os.path.join( "qc",  wildcards.sample + '.json'),
-        html = lambda wildcards : os.path.join( "qc",  wildcards.sample + '.html')
-    output: "01_clean_data/{sample}.fq.gz"
-    conda:
-        "envs/preprocess.yaml"
-    shell:"""
-    fastp -w {threads} -i {input}  -o {output}  \
-		-j {params.json} -h {params.html}
-    """
-
-# for pair-end
-rule data_conversion_pair:
-    input: "sra/{sra}.sra"
-    wildcard_constraints:
-        sra="[A-Za-z0-9]+"
-    output:
-        temp("sra/{sra}_1.fastq"),
-        temp("sra/{sra}_2.fastq") 
-    conda:
-        "envs/download.yaml"
-    shell:"fastq-dump --split-files {input} -O sra" 
-
-rule merge_R1_data:
-    input: get_merged_input_data_R1
-    output: "00_raw_data/{sample}_R1.fq.gz"
-    shell: "cat {input} | pigz > {output}"
-
-rule merge_R2_data:
-    input: get_merged_input_data_R2
-    output: "00_raw_data/{sample}_R2.fq.gz"
-    shell: "cat {input} | pigz > {output}"
-
-rule data_clean_pair:
-    input:
-        r1 = "00_raw_data/{sample}_R1.fq.gz",
-        r2 = "00_raw_data/{sample}_R2.fq.gz"
-    wildcard_constraints:
-        sample="[A-Za-z0-9]+"
-    params:
-        json = lambda wildcards : os.path.join( "qc",  wildcards.sample + '.json'),
-        html = lambda wildcards : os.path.join( "qc",  wildcards.sample + '.html'),
-    output:
-        r1 = "01_clean_data/{sample}_R1.fq.gz",
-        r2 = "01_clean_data/{sample}_R2.fq.gz" 
-    conda:
-        "envs/preprocess.yaml"
-    threads: 8
-    shell:"""
-	fastp -w {threads} -i {input.r1} -I {input.r2} -o {output.r1} -O {output.r2} \
-		-j {params.json} -h {params.html}
-    """
+include: "rules/single_end_process.smk" # single end
+include: "rules/paired_end_process.smk" # pair end
 
 # alignment
 rule align_and_count:
@@ -171,11 +128,31 @@ rule align_and_count:
         --quantMode GeneCounts --sjdbGTFfile {params.GTF}
     """
 
-# rule merge count
-# rule combine_count:
-#     input: all_counts
-#     output: final_count
-#     run:
-#         for f in all_counts:
-            
-#         df.to_csv(final_count, sep='\t', encoding='utf-8')
+
+rule combine_count:
+    input: get_counts_file
+    output: "03_merged_counts/dataset{number}_{GSE_ID}_{gene}.tsv"
+    run:
+        df = pd.read_csv(input[0],header=None, sep="\t",index_col=0 )
+        df = df.iloc[:,[0]]
+        rename_dict = {1: os.path.basename(input[0]).replace('_ReadsPerGene.out.tab','')}
+        df  =  df.rename(columns=rename_dict) 
+        for file in input[1:]:
+            df2 = pd.read_csv(file,header=None, sep="\t",index_col=0 )
+            df2 = df2.iloc[:,[0]]
+            rename_dict = {1: os.path.basename(file).replace('_ReadsPerGene.out.tab','')}
+            df2  =  df2.rename(columns=rename_dict) 
+            df = df2.merge(df,left_index=True, right_index=True)
+
+        df.to_csv(output, sep='\t', encoding='utf-8')
+
+
+onsuccess:
+    # when 
+    with open("file_dict.json", "w") as f:
+        json.dump(file_dict, f)
+
+onerror:
+    print("An error occurred")
+
+
