@@ -20,11 +20,12 @@ git clone https://gitclone.com/github.com/xuzhougeng/auto_sra_rnaseq_pipeline.gi
 - sra-tools=2.10.8
 - fastp
 - star: 如果需要在多台服务器运行该流程，需要确保star的版本一致
+- deeptools
 
 我们可以使用bioconda来安装相关环境
 
 ```bash
-conda create -n rna_seq snakemake sra-tools>2.10.0 fastp star
+conda create -n rna_seq snakemake sra-tools>2.10.0 fastp star deeptools
 # activate the environment
 conda activate rna_seq
 ```

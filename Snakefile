@@ -129,9 +129,16 @@ rule align_and_count:
     	--outBAMsortingThreadN 10 \
         --quantMode GeneCounts --sjdbGTFfile {params.GTF}
     """
+rule build_bam_index:
+    input: "02_read_align/{sample}_Aligned.sortedByCoord.out.bam"
+    output: temp("02_read_align/{sample}_Aligned.sortedByCoord.out.bam.bai")
+    threads: 4
+    shell:"samtools index -@ {threads} {input}"
 
 rule bamtobw:
-    input: "02_read_align/{sample}_Aligned.sortedByCoord.out.bam"
+    input: 
+        bam = "02_read_align/{sample}_Aligned.sortedByCoord.out.bam",
+        bai = "02_read_align/{sample}_Aligned.sortedByCoord.out.bam.bai"
     output: "04_bigwig/{sample}.bw"
     params:
         bs = "50",
@@ -143,7 +150,7 @@ rule bamtobw:
         --binSize {params.bs} \
         --effectiveGenomeSize {params.gs} \
         --normalizeUsing {params.norm} \
-        -b {input} -o {output}
+        -b {input.bam} -o {output}
     """
 
 rule combine_count:
