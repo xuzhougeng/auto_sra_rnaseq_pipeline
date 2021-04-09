@@ -6,6 +6,13 @@ import pandas as pd
 import numpy as np
 from collections import deque
 
+root_dir = os.path.dirname(os.path.abspath(workflow.snakefile))
+script_dir = os.path.join(root_dir, "scripts")
+if not os.path.exists(script_dir):
+    sys.exit("Unable to locate the Snakemake workflow file;  tried %s" %script_dir)
+
+
+# get the scripts dir
 
 configfile: "config.yaml"
 
@@ -26,6 +33,7 @@ if os.path.exists("file_dict.json"):
 counter = len(file_dict) # 已有的文件数
 
 counts_file = []    # 记录输出的tsv文件名
+deseq_file =  []    # 记录着输出的差异表达的Rds名字
 metadata_dict = {}  # 字典, key为tsv文件名, value为对应的DataFrame
 
 sample_files = glob.glob( os.path.join(metadata,  "*.txt") )
@@ -39,8 +47,10 @@ for file in sample_files:
         GSE_ID = np.unique(df['GSE'])[0]
         gene   = np.unique(df['gene'])[0]
         file_name = "03_merged_counts/dataset{}_{}_{}.tsv".format(counter, GSE_ID, gene)
+        deseq_name = "05_DGE_analysis/dataset{}_{}_{}.Rds".format(counter, GSE_ID, gene)
         
         counts_file.append(file_name)
+        deseq_file.append(deseq_name)
         metadata_dict["{}_{}_{}".format(counter, GSE_ID, gene)] = df
         counter += 1
 
@@ -53,7 +63,7 @@ if len(counts_file) > 0:
     metadata_df['key'] = np.repeat(list(metadata_dict.keys()), rep_len )
 else:
     print("no job to do")
-    sys.exit(0)
+    os._exit(0)
 
 
 samples =  metadata_df['GSM'].to_list()
@@ -72,7 +82,7 @@ def get_input_data(wildcards):
         return [ os.path.join("01_clean_data", sample + '_R1.fq.gz'), 
         os.path.join("01_clean_data",sample + '_R2.fq.gz')]
     else:
-        return [  os.path.join("01_clean_data", sample + '.fq.gz')]
+        return [  os.path.join("01_clean_data", sample + '.fq.gz') ]
 
 # get GSM ID
 def get_counts_file(wildcards):
@@ -84,12 +94,23 @@ def get_counts_file(wildcards):
     count_files = ["02_read_align/{sample}_ReadsPerGene.out.tab".format(sample=sample) for sample in samples]
     return  count_files
 
+def get_counts_and_meta(wildcards):
+    number  = wildcards.number
+    GSE_ID = wildcards.GSE_ID
+    gene   = wildcards.gene
+    df = metadata_dict["{}_{}_{}".format(number, GSE_ID, gene)]
+    dict_key = "_".join(sorted(df['GSM'].to_list() ) )
+    meta_file =  file_dict[dict_key][1]
+    counts_file  =  "03_merged_counts/dataset{}_{}_{}.tsv".format(number,GSE_ID,gene)
+    return [counts_file, meta_file]
+
     
 localrules: all, data_downloader
 rule all:
     input:
         counts_file,
-        bigwig_files
+        bigwig_files,
+        deseq_name      
 
 
 # download data from NCBI
@@ -122,11 +143,12 @@ rule align_and_count:
         GTF = config['GTF']
     output: 
         bam = temp("02_read_align/{sample}_Aligned.sortedByCoord.out.bam"),
-        counts = "02_read_align/{sample}_ReadsPerGene.out.tab"
+        counts = temp("02_read_align/{sample}_ReadsPerGene.out.tab")
     priority: 10
     threads: config['star_threads']
     conda:
         "envs/align.yaml"
+    log: os.path.join( "log", '{sample}_Log.final.out'),
     shell:"""
         STAR \
     	--genomeDir {params.index} \
@@ -137,7 +159,7 @@ rule align_and_count:
     	--outSAMtype BAM SortedByCoordinate \
     	--outBAMsortingThreadN 10 \
         --quantMode GeneCounts --sjdbGTFfile {params.GTF} &&
-        rm -rf 02_read_align/{params.prefix}__STARgenome
+        mv 02_read_align/{params.prefix}_Log.final.out {log}
     """
 rule build_bam_index:
     input: "02_read_align/{sample}_Aligned.sortedByCoord.out.bam"
@@ -187,12 +209,21 @@ rule combine_count:
         df.to_csv(output[0], sep='\t', encoding='utf-8')
 
 
+rule DGE_analysis:
+    input: 
+        get_counts_and_meta
+    output: "05_DGE_analysis/dataset{number}_{GSE_ID}_{gene}.Rds"
+    params:
+        script_dir = script_dir
+    shell:"Rscript {params.script_dir}/DESeq2_diff.R {input[0]} {input[1]} {output}"
+
 onsuccess:
-    # when 
+    print("Writing the processed file to file_dict.json") 
     with open("file_dict.json", "w") as f:
         json.dump(file_dict, f)
+    print("Deleting the unnessary file")
+    from shutil import rmtree
+    rmtree("02_read_align")
 
 onerror:
     print("An error occurred")
-
-

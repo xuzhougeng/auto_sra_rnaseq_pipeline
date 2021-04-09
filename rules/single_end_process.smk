@@ -27,14 +27,16 @@ rule data_clean_single:
     input: "00_raw_data/{sample}.fq.gz"
     wildcard_constraints:
         sample="[A-Za-z0-9]+"
-    params:
-        json = lambda wildcards : os.path.join( "qc",  wildcards.sample + '.json'),
-        html = lambda wildcards : os.path.join( "qc",  wildcards.sample + '.html')
     output: temp("01_clean_data/{sample}.fq.gz")
+    threads: config['fastp_threads']
+    log:
+        json = os.path.join( "log", '{sample}.json'),
+        html = os.path.join( "log", '{sample}.html'),
+        logs = os.path.join( "log", "{sample}_fastp.log")
     conda:
         "envs/preprocess.yaml"
     shell:"""
     fastp -w {threads} -i {input}  -o {output}  \
-		-j {params.json} -h {params.html}
+		-j {log.json} -h {log.html} &> {log.logs}
     """
 

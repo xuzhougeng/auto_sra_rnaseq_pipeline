@@ -47,17 +47,18 @@ rule data_clean_pair:
         r2 = "00_raw_data/{sample}_R2.fq.gz"
     wildcard_constraints:
         sample="[A-Za-z0-9]+"
-    params:
-        json = lambda wildcards : os.path.join( "qc",  wildcards.sample + '.json'),
-        html = lambda wildcards : os.path.join( "qc",  wildcards.sample + '.html'),
     output:
         r1 = temp("01_clean_data/{sample}_R1.fq.gz"),
         r2 = temp("01_clean_data/{sample}_R2.fq.gz") 
     conda:
         "envs/preprocess.yaml"
     threads: config['fastp_threads']
+    log:
+        json = os.path.join( "log", '{sample}.json'),
+        html = os.path.join( "log", '{sample}.html'),
+        logs = os.path.join( "log", "{sample}_fastp.log")
     shell:"""
 	fastp -w {threads} -i {input.r1} -I {input.r2} -o {output.r1} -O {output.r2} \
-		-j {params.json} -h {params.html}
+		-j {log.json} -h {log.html} &> {log.logs}
     """
 
