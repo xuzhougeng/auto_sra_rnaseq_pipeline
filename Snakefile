@@ -12,6 +12,17 @@ if not os.path.exists(script_dir):
     sys.exit("Unable to locate the Snakemake workflow file;  tried %s" %script_dir)
 
 
+# define hash function
+def myhash(string, size=8):
+    import math
+    string = string.replace("GSM", "")
+    string = string.replace("_","0")
+    hash_value = int(string)<< 4
+    hash_value = int( abs(hash_value) / math.pow(10, size) )
+    hash_value = str(abs(hash_value))[0:8]
+
+    return hash_value
+
 # get the scripts dir
 
 configfile: "config.yaml"
@@ -30,8 +41,6 @@ if os.path.exists("file_dict.json"):
 
 # 新的文件
 
-counter = len(file_dict) # 已有的文件数
-
 counts_file = []    # 记录输出的tsv文件名
 deseq_file =  []    # 记录着输出的差异表达的Rds名字
 metadata_dict = {}  # 字典, key为tsv文件名, value为对应的DataFrame
@@ -40,19 +49,24 @@ sample_files = glob.glob( os.path.join(metadata,  "*.txt") )
 for file in sample_files:
     df = pd.read_csv(file, sep = "\t")
     dict_key = "_".join(sorted(df['GSM'].to_list()))
-    # 判断当前文件是否存在重复或是否已经处理
-    if dict_key not in file_dict:
-        file_dict[dict_key] = [ counter, file ]
-        
-        GSE_ID = np.unique(df['GSE'])[0]
-        gene   = np.unique(df['gene'])[0]
-        file_name = "03_merged_counts/dataset{}_{}_{}.tsv".format(counter, GSE_ID, gene)
-        deseq_name = "05_DGE_analysis/dataset{}_{}_{}.Rds".format(counter, GSE_ID, gene)
-        
-        counts_file.append(file_name)
-        deseq_file.append(deseq_name)
-        metadata_dict["{}_{}_{}".format(counter, GSE_ID, gene)] = df
-        counter += 1
+    hash_value = myhash(dict_key)
+    #print("{}:{}".format(file, hash_value))
+    # 过滤文件名不同，但是内容相同的任务
+    if dict_key in file_dict:
+        if file_dict[dict_key] != file:
+            continue
+
+    file_dict[dict_key] = file 
+    
+    GSE_ID = np.unique(df['GSE'])[0]
+    gene   = np.unique(df['gene'])[0]
+    file_name = "03_merged_counts/{}_{}_{}.tsv".format(GSE_ID, gene, hash_value)
+    deseq_name = "05_DGE_analysis/{}_{}_{}.Rds".format(GSE_ID, gene, hash_value)
+    
+    counts_file.append(file_name)
+    deseq_file.append(deseq_name)
+    metadata_dict["{}_{}_{}".format(GSE_ID, gene, hash_value)] = df
+
 
 
 # 记录所有元信息, 用于后续查询
@@ -89,7 +103,7 @@ def get_counts_file(wildcards):
     number  = wildcards.number
     GSE_ID = wildcards.GSE_ID
     gene   = wildcards.gene
-    df = metadata_dict["{}_{}_{}".format(number, GSE_ID, gene)]
+    df = metadata_dict["{}_{}_{}".format(GSE_ID, gene, number)]
     samples =  df['GSM'].to_list()
     count_files = ["02_read_align/{sample}_ReadsPerGene.out.tab".format(sample=sample) for sample in samples]
     return  count_files
@@ -98,10 +112,10 @@ def get_counts_and_meta(wildcards):
     number  = wildcards.number
     GSE_ID = wildcards.GSE_ID
     gene   = wildcards.gene
-    df = metadata_dict["{}_{}_{}".format(number, GSE_ID, gene)]
+    df = metadata_dict["{}_{}_{}".format(GSE_ID, gene, number)]
     dict_key = "_".join(sorted(df['GSM'].to_list() ) )
-    meta_file =  file_dict[dict_key][1]
-    counts_file  =  "03_merged_counts/dataset{}_{}_{}.tsv".format(number,GSE_ID,gene)
+    meta_file =  file_dict[dict_key]
+    counts_file  =  "03_merged_counts/{}_{}_{}.tsv".format(GSE_ID, gene, number)
     return [counts_file, meta_file]
 
     
@@ -110,7 +124,7 @@ rule all:
     input:
         counts_file,
         bigwig_files,
-        deseq_name      
+        deseq_file      
 
 
 # download data from NCBI
@@ -191,7 +205,7 @@ rule bamtobw:
 
 rule combine_count:
     input: get_counts_file
-    output: "03_merged_counts/dataset{number}_{GSE_ID}_{gene}.tsv"
+    output: "03_merged_counts/{GSE_ID}_{gene}_{number}.tsv"
     run:
         #if not os.path.exists("03_merged_counts"):
             #os.mkir("03_merged_counts")
@@ -212,7 +226,7 @@ rule combine_count:
 rule DGE_analysis:
     input: 
         get_counts_and_meta
-    output: "05_DGE_analysis/dataset{number}_{GSE_ID}_{gene}.Rds"
+    output: "05_DGE_analysis/{GSE_ID}_{gene}_{number}.Rds"
     params:
         script_dir = script_dir
     shell:"Rscript {params.script_dir}/DESeq2_diff.R {input[0]} {input[1]} {output}"
@@ -223,7 +237,8 @@ onsuccess:
         json.dump(file_dict, f)
     print("Deleting the unnessary file")
     from shutil import rmtree
-    rmtree("02_read_align")
+    if os.path.exists("02_read_align"):
+        rmtree("02_read_align")
 
 onerror:
     print("An error occurred")
