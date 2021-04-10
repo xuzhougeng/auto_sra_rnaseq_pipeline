@@ -16,7 +16,7 @@ if not os.path.exists(script_dir):
 def myhash(string, size=8):
     import math
     string = string.replace("GSM", "")
-    string = string.replace("_","0")
+    string = string.replace("_","0")[0:100]
     hash_value = int(string)<< 4
     hash_value = int( abs(hash_value) / math.pow(10, size) )
     hash_value = str(abs(hash_value))[0:8]
