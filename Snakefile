@@ -119,7 +119,14 @@ def get_counts_and_meta(wildcards):
     counts_file  =  "03_merged_counts/{}_{}_{}.tsv".format(GSE_ID, gene, number)
     return [counts_file, meta_file]
 
-    
+def get_dict(wildcards):
+    number  = wildcards.number
+    GSE_ID = wildcards.GSE_ID
+    gene   = wildcards.gene
+    df = metadata_dict["{}_{}_{}".format(GSE_ID, gene, number)]
+    dict_key = "_".join(sorted(df['GSM'].to_list() ) )
+    return dict_key
+
 localrules: all, data_downloader
 rule all:
     input:
@@ -223,23 +230,6 @@ rule combine_count:
             df = df2.merge(df,left_index=True, right_index=True)
 
         df.to_csv(output[0], sep='\t', encoding='utf-8')
-        
-        # update the json file
-        with open("file_dict.json", "r") as f:
-            file_dict = json.load(f)
-        # get the key-value pair
-        number  = wildcards.number
-        GSE_ID = wildcards.GSE_ID
-        gene   = wildcards.gene
-        df = metadata_dict["{}_{}_{}".format(GSE_ID, gene, number)]
-        dict_key = "_".join(sorted(df['GSM'].to_list() ) )
-        meta_file =  file_dict[dict_key]
-
-        file_dict[dict_key] = meta_file
-        print("Writing the processed file to file_dict.json") 
-        with open("file_dict.json", "w") as f:
-            json.dump(file_dict, f)
-
 
 
 rule DGE_analysis:
@@ -248,8 +238,12 @@ rule DGE_analysis:
     output: "05_DGE_analysis/{GSE_ID}_{gene}_{number}.Rds"
     priority: 30
     params:
-        script_dir = script_dir
-    shell:"Rscript {params.script_dir}/DESeq2_diff.R {input[0]} {input[1]} {output}"
+        script_dir = script_dir,
+        dict_key = lambda wildcards : get_dict(wildcards)
+    shell:"""
+    Rscript {params.script_dir}/DESeq2_diff.R {input[0]} {input[1]} {output} &&
+    python {params.script_dir}/update_json.py {params.dict_key} {input[1]}
+    """
 
 onsuccess:
     print("Deleting the unnessary file")
