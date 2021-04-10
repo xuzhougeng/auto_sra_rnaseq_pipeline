@@ -4,7 +4,7 @@ def get_merged_input_data(wildcards):
 
     SRR_ID = df.loc[df['GSM'] == sample, "SRR"].tolist()[0]
     SRR_ID = SRR_ID.split(",")
-    print(SRR_ID)
+    #print(SRR_ID)
 
     return [ "sra/{x}.fastq".format(x=x) for x in SRR_ID ]
 

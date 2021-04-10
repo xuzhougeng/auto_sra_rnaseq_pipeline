@@ -6,6 +6,9 @@ import pandas as pd
 import numpy as np
 from collections import deque
 
+
+print(workflow.scheduler_type, file = sys.stderr)
+
 root_dir = os.path.dirname(os.path.abspath(workflow.snakefile))
 script_dir = os.path.join(root_dir, "scripts")
 if not os.path.exists(script_dir):
@@ -132,9 +135,9 @@ rule all:
     input:
         counts_file,
         bigwig_files,
-        deseq_file      
-
-
+        deseq_file
+        
+        
 # download data from NCBI
 rule data_downloader:
     params: 
@@ -166,7 +169,7 @@ rule align_and_count:
     output: 
         bam = temp("02_read_align/{sample}_Aligned.sortedByCoord.out.bam"),
         counts = temp("02_read_align/{sample}_ReadsPerGene.out.tab")
-    priority: 10
+    #priority: 10
     threads: config['star_threads']
     conda:
         "envs/align.yaml"
@@ -214,7 +217,7 @@ rule bamtobw:
 rule combine_count:
     input: get_counts_file
     output: "03_merged_counts/{GSE_ID}_{gene}_{number}.tsv"
-    priority: 20
+    #priority: 30
     run:
         #if not os.path.exists("03_merged_counts"):
             #os.mkir("03_merged_counts")
