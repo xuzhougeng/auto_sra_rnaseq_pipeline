@@ -206,6 +206,7 @@ rule bamtobw:
 rule combine_count:
     input: get_counts_file
     output: "03_merged_counts/{GSE_ID}_{gene}_{number}.tsv"
+    priority: 20
     run:
         #if not os.path.exists("03_merged_counts"):
             #os.mkir("03_merged_counts")
@@ -227,6 +228,7 @@ rule DGE_analysis:
     input: 
         get_counts_and_meta
     output: "05_DGE_analysis/{GSE_ID}_{gene}_{number}.Rds"
+    priority: 30
     params:
         script_dir = script_dir
     shell:"Rscript {params.script_dir}/DESeq2_diff.R {input[0]} {input[1]} {output}"
