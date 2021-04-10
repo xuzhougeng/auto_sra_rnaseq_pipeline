@@ -51,11 +51,12 @@ for file in sample_files:
     dict_key = "_".join(sorted(df['GSM'].to_list()))
     hash_value = myhash(dict_key)
     #print("{}:{}".format(file, hash_value))
-    # 过滤文件名不同，但是内容相同的任务
+    # 过滤已经处理过的样本，基于GSM编号
     if dict_key in file_dict:
-        if file_dict[dict_key] != file:
-            continue
-
+        continue
+        #if file_dict[dict_key] != file:
+        #    continue
+    # 新增任务
     file_dict[dict_key] = file 
     
     GSE_ID = np.unique(df['GSE'])[0]
@@ -222,6 +223,23 @@ rule combine_count:
             df = df2.merge(df,left_index=True, right_index=True)
 
         df.to_csv(output[0], sep='\t', encoding='utf-8')
+        
+        # update the json file
+        with open("file_dict.json", "r") as f:
+            file_dict = json.load(f)
+        # get the key-value pair
+        number  = wildcards.number
+        GSE_ID = wildcards.GSE_ID
+        gene   = wildcards.gene
+        df = metadata_dict["{}_{}_{}".format(GSE_ID, gene, number)]
+        dict_key = "_".join(sorted(df['GSM'].to_list() ) )
+        meta_file =  file_dict[dict_key]
+
+        file_dict[dict_key] = meta_file
+        print("Writing the processed file to file_dict.json") 
+        with open("file_dict.json", "w") as f:
+            json.dump(file_dict, f)
+
 
 
 rule DGE_analysis:
@@ -234,9 +252,6 @@ rule DGE_analysis:
     shell:"Rscript {params.script_dir}/DESeq2_diff.R {input[0]} {input[1]} {output}"
 
 onsuccess:
-    print("Writing the processed file to file_dict.json") 
-    with open("file_dict.json", "w") as f:
-        json.dump(file_dict, f)
     print("Deleting the unnessary file")
     from shutil import rmtree
     if os.path.exists("02_read_align"):
