@@ -54,13 +54,6 @@ for file in sample_files:
     df = pd.read_csv(file, sep = "\t")
     dict_key = "_".join(sorted(df['GSM'].to_list()))
     hash_value = myhash(dict_key)
-    #print("{}:{}".format(file, hash_value))
-    # 过滤已经处理过的样本，基于GSM编号
-    if dict_key in file_dict:
-        continue
-        #if file_dict[dict_key] != file:
-        #    continue
-    # 新增任务
     file_dict[dict_key] = file 
     
     GSE_ID = np.unique(df['GSE'])[0]
