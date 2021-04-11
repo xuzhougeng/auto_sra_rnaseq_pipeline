@@ -7,7 +7,11 @@ import numpy as np
 from collections import deque
 
 
-print(workflow.scheduler_type, file = sys.stderr)
+#print(workflow.scheduler_type, file = sys.stderr)
+
+
+# modify scheduler
+from snakemake import scheduler
 
 root_dir = os.path.dirname(os.path.abspath(workflow.snakefile))
 script_dir = os.path.join(root_dir, "scripts")
@@ -170,6 +174,8 @@ rule align_and_count:
         bam = temp("02_read_align/{sample}_Aligned.sortedByCoord.out.bam"),
         counts = temp("02_read_align/{sample}_ReadsPerGene.out.tab")
     priority: 40
+    resources:
+        mem_mb = lambda wildcards, attempt: 10000 if attempt == 1 else 60000 * (attempt-1)
     threads: config['star_threads']
     conda:
         "envs/align.yaml"
@@ -183,7 +189,9 @@ rule align_and_count:
     	--outFileNamePrefix 02_read_align/{params.prefix}_ \
     	--outSAMtype BAM SortedByCoordinate \
     	--outBAMsortingThreadN 10 \
-        --quantMode GeneCounts --sjdbGTFfile {params.GTF} &&
+        --limitBAMsortRAM $(({resources.mem_mb} * 1000000)) \
+        --quantMode GeneCounts --sjdbGTFfile {params.GTF} \
+        --outTmpKeep None &&
         mv 02_read_align/{params.prefix}_Log.final.out {log}
     """
 rule build_bam_index:
@@ -258,3 +266,6 @@ onsuccess:
 
 onerror:
     print("An error occurred")
+
+onstart:
+    print("begin")
