@@ -8,6 +8,20 @@ from collections import deque
 
 
 #print(workflow.scheduler_type, file = sys.stderr)
+def send_mail(subject, content, receiver="xuzhougeng@163.com"):
+    import smtplib
+    from email.message import EmailMessage
+    msg = EmailMessage()
+    msg['Subject'] = subject
+    # me == the sender's email address
+    # family = the list of all recipients' email addresses
+    msg['From'] = "Snakemake"
+    msg['To'] = receiver
+    msg.set_content(content)
+
+    # Send the email via our own SMTP server.
+    with smtplib.SMTP('localhost') as s:
+        s.send_message(msg)
 
 
 root_dir = os.path.dirname(os.path.abspath(workflow.snakefile))
@@ -253,9 +267,9 @@ onsuccess:
     from shutil import rmtree
     if os.path.exists("02_read_align"):
         rmtree("02_read_align")
+    content = "Following jobs fininished: \n "+ "\n".join(deseq_file)
+    send_mail(subject = "snakemake run successful", content = content, receiver=config['mail_to'])
 
 onerror:
-    print("An error occurred")
-
-onstart:
-    print("begin")
+    contents = open(log, "r").read()
+    send_mail(subject = "snakemake run failed", content = contents, receiver=config['mail_to'])

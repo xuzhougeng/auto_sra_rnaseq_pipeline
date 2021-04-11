@@ -3,6 +3,9 @@ GTF: "/data/reference/genome/GRCh38/Homo_sapiens.GRCh38.95.sort.gtf"
 metadata: "metadata"
 
 
+# email address
+mail_to: "youemaill@provider.com"
+
 # threads setting
 download_threads: 1
 pigz_threads: 10
