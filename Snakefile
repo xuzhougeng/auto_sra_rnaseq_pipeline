@@ -10,9 +10,6 @@ from collections import deque
 #print(workflow.scheduler_type, file = sys.stderr)
 
 
-# modify scheduler
-from snakemake import scheduler
-
 root_dir = os.path.dirname(os.path.abspath(workflow.snakefile))
 script_dir = os.path.join(root_dir, "scripts")
 if not os.path.exists(script_dir):
@@ -191,7 +188,7 @@ rule align_and_count:
     	--outBAMsortingThreadN 10 \
         --limitBAMsortRAM $(({resources.mem_mb} * 1000000)) \
         --quantMode GeneCounts --sjdbGTFfile {params.GTF} \
-        --outTmpKeep None &&
+        --outTmpKeep None && \
         mv 02_read_align/{params.prefix}_Log.final.out {log}
     """
 rule build_bam_index:
