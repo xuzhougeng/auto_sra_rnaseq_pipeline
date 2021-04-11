@@ -17,8 +17,19 @@ def get_snakefile(root_dir = ".", file = "Snakefile"):
     return sf
 
 # check the duplication metadata file
-def check_duplication(file, file_dict, finished_dir):
-    sample_files = glob.glob( os.path.join(finished_dir,  "*.txt") )
+def check_finished(file, file_dict):
+    if os.path.exists(file_dict):
+        with open("file_dict.json", "r") as f:
+            file_dict = json.load(f)
+    else:
+        return False
+    if file in file_dict.keys():
+        if os.path.basename(file) == os.path.basename(file_dict[file]):
+            return True
+    return False
+
+def check_duplication(file, file_dict, comp_dir):
+    sample_files = glob.glob( os.path.join(comp_dir,  "*.txt") )
     if file in sample_files:
         sample_files.remove(file)
     existed_files = set()
@@ -80,7 +91,9 @@ def main(root_dir, args):
     while len(sample_files) > 0 :
         for i in range(min(parallel, len(sample_files))):
             file = sample_files.pop()
-            if check_duplication(file, file_dict, finished_dir):
+            if check_finished(file, file_dict):
+                shutil.move(file, finished_dir)
+            elif check_duplication(file, file_dict, finished_dir):
                 shutil.move(file, "duplication")
             elif check_duplication(file, file_dict, unfinished_dir):
                 shutil.move(file, "duplication")

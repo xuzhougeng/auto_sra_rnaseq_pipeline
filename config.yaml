@@ -4,7 +4,10 @@ metadata: "metadata"
 
 
 # email address
+sender: 
+sender_password: 
 mail_to: "youemaill@provider.com"
+
 
 # threads setting
 download_threads: 1

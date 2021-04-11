@@ -7,28 +7,33 @@ import numpy as np
 from collections import deque
 
 
+
+
 #print(workflow.scheduler_type, file = sys.stderr)
-def send_mail(subject, content, receiver="xuzhougeng@163.com"):
+def send_mail(subject, content, 
+              sender, sender_passwd, 
+              smtp_server = 'smtp.qq.com',
+              msg_to="xuzhougeng@163.com"):
     import smtplib
-    from email.message import EmailMessage
-    msg = EmailMessage()
+    from email.mime.text import MIMEText
+
+    msg = MIMEText(content, 'plain', 'utf-8')
+    
     msg['Subject'] = subject
-    # me == the sender's email address
-    # family = the list of all recipients' email addresses
-    msg['From'] = "Snakemake"
-    msg['To'] = receiver
-    msg.set_content(content)
-
+    msg['From'] = sender
+    msg['To'] = msg_to
     # Send the email via our own SMTP server.
-    with smtplib.SMTP('localhost') as s:
-        s.send_message(msg)
-
-
-root_dir = os.path.dirname(os.path.abspath(workflow.snakefile))
-script_dir = os.path.join(root_dir, "scripts")
-if not os.path.exists(script_dir):
-    sys.exit("Unable to locate the Snakemake workflow file;  tried %s" %script_dir)
-
+    try:
+        client = smtplib.SMTP_SSL(smtp_server, smtplib.SMTP_SSL_PORT)
+        print("connecting mail server successfully")
+        client.login(sender, sender_passwd)
+        print("loging mail server successfully")
+        client.sendmail(sender, msg_to, msg.as_string())
+        print("sending mail successfully")
+    except smtplib.SMTPException as e:
+        print("unable to send mail, check your SMTP server.", file = sys.stderr)
+    finally:
+        client.quit()
 
 # define hash function
 def myhash(string, size=8):
@@ -40,6 +45,12 @@ def myhash(string, size=8):
     hash_value = str(abs(hash_value))[0:8]
 
     return hash_value
+
+
+root_dir = os.path.dirname(os.path.abspath(workflow.snakefile))
+script_dir = os.path.join(root_dir, "scripts")
+if not os.path.exists(script_dir):
+    sys.exit("Unable to locate the Snakemake workflow file;  tried %s" %script_dir)
 
 # get the scripts dir
 
@@ -267,9 +278,17 @@ onsuccess:
     from shutil import rmtree
     if os.path.exists("02_read_align"):
         rmtree("02_read_align")
-    content = "Following jobs fininished: \n "+ "\n".join(deseq_file)
-    send_mail(subject = "snakemake run successful", content = content, receiver=config['mail_to'])
+    contents = "snakemake run successful\nFollowing jobs fininished: \n "+ "\n".join(deseq_file)
+    if len(config["sender"]) > 0 and len(config["sender_password"]) > 0:
+        send_mail(subject = "snakemake run successful", content = contents, 
+            sender = config["sender"],
+            sender_passwd = config["sender_password"],
+            msg_to=config['mail_to'])
 
 onerror:
     contents = open(log, "r").read()
-    send_mail(subject = "snakemake run failed", content = contents, receiver=config['mail_to'])
+    if len(config["sender"]) > 0 and len(config["sender_password"]) > 0:
+        send_mail(subject = "snakemake run failed", content = "snakemake run failed", 
+            sender = config["sender"],
+            sender_passwd = config["sender_password"],
+            msg_to=config['mail_to'])
