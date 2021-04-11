@@ -78,15 +78,15 @@ def main(root_dir, args):
     todo_files = []
 
     while len(sample_files) > 0 :
-        for i in range(min(10, len(sample_files))):
+        for i in range(min(parallel, len(sample_files))):
             file = sample_files.pop()
             if check_duplication(file, file_dict, finished_dir):
                 shutil.move(file, "duplication")
             elif check_duplication(file, file_dict, unfinished_dir):
                 shutil.move(file, "duplication")
             else:
-                todo_files.append(file)
                 shutil.move(file, "metadata")
+                todo_files.append(os.path.join( "metadata" ,os.path.basename(file))  )
         status = run_snakemake(sf, config_file, cores )
         # move the finished file to finished
         if status:
