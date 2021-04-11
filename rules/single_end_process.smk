@@ -11,6 +11,7 @@ def get_merged_input_data(wildcards):
 
 rule data_conversion_single:
     input: "sra/{sra}/{sra}.sra"
+    priority: 10
     wildcard_constraints:
         sra="[A-Za-z0-9]+"
     output: temp("sra/{sra}.fastq")
@@ -20,11 +21,13 @@ rule data_conversion_single:
 
 rule merge_data:
     input: get_merged_input_data
+    priority: 20
     output: temp("00_raw_data/{sample}.fq.gz")
     shell: "cat {input} | pigz > {output}"
 
 rule data_clean_single:
     input: "00_raw_data/{sample}.fq.gz"
+    priority: 30
     wildcard_constraints:
         sample="[A-Za-z0-9]+"
     output: temp("01_clean_data/{sample}.fq.gz")

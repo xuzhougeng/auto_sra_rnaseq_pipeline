@@ -133,13 +133,13 @@ def get_dict(wildcards):
 localrules: all, data_downloader
 rule all:
     input:
+        deseq_file,
         counts_file,
-        bigwig_files,
-        deseq_file
-        
+        bigwig_files
         
 # download data from NCBI
 rule data_downloader:
+    priority: 5
     params: 
         sra_id = lambda wildcards: wildcards.sra
     output: temp("sra/{sra}/{sra}.sra")
@@ -169,7 +169,7 @@ rule align_and_count:
     output: 
         bam = temp("02_read_align/{sample}_Aligned.sortedByCoord.out.bam"),
         counts = temp("02_read_align/{sample}_ReadsPerGene.out.tab")
-    #priority: 10
+    priority: 40
     threads: config['star_threads']
     conda:
         "envs/align.yaml"
@@ -188,6 +188,7 @@ rule align_and_count:
     """
 rule build_bam_index:
     input: "02_read_align/{sample}_Aligned.sortedByCoord.out.bam"
+    priority: 40
     output: temp("02_read_align/{sample}_Aligned.sortedByCoord.out.bam.bai")
     conda:
         "envs/align.yaml"
@@ -199,6 +200,7 @@ rule bamtobw:
         bam = "02_read_align/{sample}_Aligned.sortedByCoord.out.bam",
         bai = "02_read_align/{sample}_Aligned.sortedByCoord.out.bam.bai"
     output: "04_bigwig/{sample}.bw"
+    priority: 45
     params:
         bs = "50",
         gs = "2913022398",
@@ -217,7 +219,7 @@ rule bamtobw:
 rule combine_count:
     input: get_counts_file
     output: "03_merged_counts/{GSE_ID}_{gene}_{number}.tsv"
-    #priority: 30
+    priority: 50
     run:
         #if not os.path.exists("03_merged_counts"):
             #os.mkir("03_merged_counts")
@@ -239,7 +241,7 @@ rule DGE_analysis:
     input: 
         get_counts_and_meta
     output: "05_DGE_analysis/{GSE_ID}_{gene}_{number}.Rds"
-    priority: 30
+    priority: 50
     params:
         script_dir = script_dir,
         dict_key = lambda wildcards : get_dict(wildcards)
