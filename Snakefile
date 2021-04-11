@@ -217,7 +217,7 @@ rule bamtobw:
 rule combine_count:
     input: get_counts_file
     output: "03_merged_counts/{GSE_ID}_{gene}_{number}.tsv"
-    priority: 50
+    priority: 35
     run:
         #if not os.path.exists("03_merged_counts"):
             #os.mkir("03_merged_counts")
@@ -239,7 +239,7 @@ rule DGE_analysis:
     input: 
         get_counts_and_meta
     output: "05_DGE_analysis/{GSE_ID}_{gene}_{number}.Rds"
-    priority: 50
+    priority: 35
     params:
         script_dir = script_dir,
         dict_key = lambda wildcards : get_dict(wildcards)
