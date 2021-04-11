@@ -58,6 +58,7 @@ def main(root_dir, args):
     unfinished_dir = args[1]
     config_file    = [args[2]]
     cores = 79 if len(args) <= 3 else int(args[3])
+    parallel = 5
 
     finished_dir = "finished"
 
@@ -90,7 +91,7 @@ def main(root_dir, args):
         # move the finished file to finished
         if status:
             finished_file = glob.glob( os.path.join("metadata",  "*.txt") )
-            for i in range(min(10, len(finished_file))):
+            for i in range(min(parallel, len(finished_file))):
                 file = finished_file.pop()
                 shutil.move(file, finished_dir)
         else:
