@@ -40,9 +40,9 @@ def main(root_dir, args):
         for i in range(min(10, len(sample_files))):
             file = sample_files.pop()
             shutil.move(file, "metadata")
-            status = run_snakemake(sf, config_file, cores )
-            if not status:
-                sys.exit(1)
+        status = run_snakemake(sf, config_file, cores )
+        if not status:
+            sys.exit(1)
 
 if __name__ == '__main__':
     root_dir = os.path.dirname(os.path.abspath(__file__))
