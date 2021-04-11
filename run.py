@@ -33,6 +33,9 @@ def main(root_dir, args):
 
     if not os.path.exists("metadata"):
         os.makedirs("metadata")
+    if not os.path.exists("finished"):
+        os.makedirs("finished")
+    
 
     sf = get_snakefile(root_dir, "Snakefile")
     sample_files = glob.glob( os.path.join(unfinished_dir,  "*.txt") )
@@ -41,7 +44,13 @@ def main(root_dir, args):
             file = sample_files.pop()
             shutil.move(file, "metadata")
         status = run_snakemake(sf, config_file, cores )
-        if not status:
+        # move the finished file to finished
+        if status:
+            finished_file = glob.glob( os.path.join("metadata",  "*.txt") )
+            for i in range(min(10, len(finished_file))):
+                file = finished_file.pop()
+                shutil.move(file, "finished")
+        else:
             sys.exit(1)
 
 if __name__ == '__main__':
