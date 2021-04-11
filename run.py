@@ -15,7 +15,10 @@ def get_snakefile(root_dir = ".", file = "Snakefile"):
     return sf
 
 def run_snakemake(Snakefile, configfiles, cores):
-    status = snakemake(snakefile= Snakefile, configfiles = configfiles, cores = cores)
+    status = snakemake(snakefile= Snakefile, 
+                      configfiles = configfiles, 
+                      cores = cores,
+                      force_incomplete = True)
     return status
 
 # 
