@@ -59,13 +59,20 @@ cd results
 
 另外metadata必须包括如下列， GSM, GSE, gene, SRR, 否则程序运行绝对失败
 
+运行方法
+
 ```bash
-snakemake --rerun-incomplete --restart-times 10 -j 120  --configfile config.yaml -s /path/to/auto_sra_rnaseq_pipeline/Snakefile 
+python3 /path/to/auto_sra_rnaseq_pipeline/run.py unfinished config.yaml 79
+# unfinished指的是未完成任务的位置
+# config.yaml是你的配置文件
+# 79 表示任务数
 ```
 
-`--rerun-incomplete` 表示会重跑不完整的
+如果任务失败，再次运行提醒中有 --unlock, 需要运行如下的代码
 
-`-restart-times 10`表示在失败的时候会重新尝试10次 
+```bash
+snakemake --configfile config.yaml -s auto_sra_rnaseq_pipeline/Snakefile  --unlock
+```
 
 ## 配置文件说明
 
@@ -76,3 +83,22 @@ snakemake --rerun-incomplete --restart-times 10 -j 120  --configfile config.yaml
 - pigz_threads: 10
 - fastp_threads: 8
 - star_threads: 20
+
+如下参数和任务完成后的提醒有关
+
+邮件提醒（目前只支持qq邮箱的pop3协议）,设置为False表示不启用，
+
+- mail: False
+- sender: 
+- sender_password:  
+- mail_to: 
+
+IOS bark提醒
+
+- bark: False
+- bark_api: #"https://api.day.app/xxxxxxxxxxxxxxxxx"
+
+Feishu提醒
+
+- feishu: False
+- feishu_api: 
