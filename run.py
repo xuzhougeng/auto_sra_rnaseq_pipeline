@@ -220,7 +220,7 @@ def main(root_dir, args):
             if config['bark']:
                 bark_notification(config['bark_api'], contents)
             if config['feishu']:
-                feishu_notification(config['feishu_api', contents])    
+                feishu_notification(config['feishu_api'], contents)    
             finished_file = glob.glob( os.path.join(metdata_dir,  "*.txt") )
             for i in range(min(parallel, len(finished_file))):
                 file = finished_file.pop()
@@ -230,7 +230,7 @@ def main(root_dir, args):
             if config['bark']:
                 bark_notification(config['bark_api'], contents)
             if config['feishu']:
-                feishu_notification(config['feishu_api', contents])           
+                feishu_notification(config['feishu_api'], contents)           
             for i in range(len(todo_files)):
                 file = todo_files.pop()
                 shutil.move(file, "unfinished")
