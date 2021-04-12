@@ -6,6 +6,7 @@ import shutil
 import pandas as pd
 import json
 
+from urllib import request, parse
 from urllib.request import urlopen
 from urllib.parse import quote
 from urllib.parse import urljoin
@@ -18,11 +19,6 @@ from snakemake.io import load_configfile
 # arguments order
 # 
 
-def get_snakefile(root_dir = ".", file = "Snakefile"):
-    sf = os.path.join(root_dir, file)
-    if not os.path.exists(sf):
-        sys.exit("Unable to locate the Snakemake workflow file;  tried %s" %sf)
-    return sf
 
 # check config
 def check_config(config):
@@ -119,6 +115,30 @@ def check_duplication(file, dup_file):
         return False
     return True
 
+def bark_notification(api, contents):
+    base_url = api
+    content = quote(contents)
+    full_url = urljoin(base_url,  content)
+    urlopen(full_url)
+
+def feishu_notification(api,contents):
+    req =  request.Request(api, method="POST") # this will make the method "POST"
+    req.add_header('Content-Type', 'application/json')
+    data_dict = {
+        "msg_type": "text",
+        "content": {"text": "进展报告: " + contents}
+    }
+    data = json.dumps(data_dict).encode()
+    resp = urlopen(req, data = data)
+    return  resp
+
+
+def get_snakefile(root_dir = ".", file = "Snakefile"):
+    sf = os.path.join(root_dir, file)
+    if not os.path.exists(sf):
+        sys.exit("Unable to locate the Snakemake workflow file;  tried %s" %sf)
+    return sf
+
 def run_snakemake(Snakefile, configfiles, cores):
     status = snakemake(snakefile= Snakefile, 
                       configfiles = configfiles, 
@@ -196,21 +216,21 @@ def main(root_dir, args):
         # move the finished file to finished
 
         if status:
+            contents="snakemake run successfully"
             if config['bark']:
-                base_url = config['bark_api']
-                content = quote("snakemake run successfully")
-                full_url = urljoin(base_url,  content)
-                urlopen(full_url)
+                bark_notification(config['bark_api'], contents)
+            if config['feishu']:
+                feishu_notification(config['feishu_api', contents])    
             finished_file = glob.glob( os.path.join(metdata_dir,  "*.txt") )
             for i in range(min(parallel, len(finished_file))):
                 file = finished_file.pop()
                 shutil.move(file, finished_dir)
         else:
+            contents = "snakemake run failed"
             if config['bark']:
-                base_url = config['bark_api']
-                content = quote("snakemake run failed")
-                full_url = urljoin(base_url,  content)
-                urlopen(full_url)            
+                bark_notification(config['bark_api'], contents)
+            if config['feishu']:
+                feishu_notification(config['feishu_api', contents])           
             for i in range(len(todo_files)):
                 file = todo_files.pop()
                 shutil.move(file, "unfinished")

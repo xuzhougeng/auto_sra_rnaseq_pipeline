@@ -13,6 +13,9 @@ mail_to: #"youemaill@provider.com"
 bark: False
 bark_api: #"https://api.day.app/xxxxxxxxxxxxxxxxx"
 
+# Feishu
+feishu: False
+feishu_api: 
 
 # threads setting
 download_threads: 1

@@ -278,7 +278,7 @@ onsuccess:
     from shutil import rmtree
     if os.path.exists("02_read_align"):
         rmtree("02_read_align")
-    contents = "snakemake run successful\nFollowing jobs fininished: \n "+ "\n".join(deseq_file)
+    contents = "snakemake run successful\nFollowing jobs fininished:\n "+ "\n".join(deseq_file)
     if config['mail']:
     #if len(config["sender"]) > 0 and len(config["sender_password"]) > 0:
         send_mail(subject = "snakemake run successful", content = contents, 
