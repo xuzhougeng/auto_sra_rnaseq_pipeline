@@ -3,10 +3,15 @@ GTF: "/data/reference/genome/GRCh38/Homo_sapiens.GRCh38.95.sort.gtf"
 metadata: "metadata"
 
 
-# email address
+# notification
+## Email
+mail: False
 sender: 
 sender_password: 
-mail_to: "youemaill@provider.com"
+mail_to: #"youemaill@provider.com"
+## IOS bark
+bark: False
+bark_api: #"https://api.day.app/xxxxxxxxxxxxxxxxx"
 
 
 # threads setting

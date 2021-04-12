@@ -269,8 +269,8 @@ rule DGE_analysis:
         script_dir = script_dir,
         dict_key = lambda wildcards : get_dict(wildcards)
     shell:"""
-    Rscript {params.script_dir}/DESeq2_diff.R {input[0]} {input[1]} {output} &&
-    python {params.script_dir}/update_json.py {params.dict_key} {input[1]}
+    Rscript {params.script_dir}/DESeq2_diff.R "{input[0]}" "{input[1]}" "{output}" &&
+    python {params.script_dir}/update_json.py {params.dict_key} "{input[1]}"
     """
 
 onsuccess:
@@ -279,7 +279,8 @@ onsuccess:
     if os.path.exists("02_read_align"):
         rmtree("02_read_align")
     contents = "snakemake run successful\nFollowing jobs fininished: \n "+ "\n".join(deseq_file)
-    if len(config["sender"]) > 0 and len(config["sender_password"]) > 0:
+    if config['mail']:
+    #if len(config["sender"]) > 0 and len(config["sender_password"]) > 0:
         send_mail(subject = "snakemake run successful", content = contents, 
             sender = config["sender"],
             sender_passwd = config["sender_password"],
@@ -287,7 +288,8 @@ onsuccess:
 
 onerror:
     contents = open(log, "r").read()
-    if len(config["sender"]) > 0 and len(config["sender_password"]) > 0:
+    if config['mail']:
+    #if len(config["sender"]) > 0 and len(config["sender_password"]) > 0:
         send_mail(subject = "snakemake run failed", content = "snakemake run failed", 
             sender = config["sender"],
             sender_passwd = config["sender_password"],
