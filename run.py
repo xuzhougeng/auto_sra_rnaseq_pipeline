@@ -27,6 +27,11 @@ def get_snakefile(root_dir = ".", file = "Snakefile"):
 # check config
 def check_config(config):
     # check config
+    if 'mail' not in config.keys():
+        config['mail'] = False
+    if 'bark' not in config.keys():
+        config['bark'] = False
+        
     if config['mail']:
         if 'sender' not in config.keys() or config['sender'] is None:
             print("sender should not be empty", file = sys.stderr)
