@@ -26,11 +26,6 @@ def get_snakefile(root_dir = ".", file = "Snakefile"):
 
 # check config
 def check_config(config):
-    # check config
-    if 'mail' not in config.keys():
-        config['mail'] = False
-    if 'bark' not in config.keys():
-        config['bark'] = False
         
     if config['mail']:
         if 'sender' not in config.keys() or config['sender'] is None:
@@ -145,6 +140,11 @@ def main(root_dir, args):
     parallel = 5
     # load config
     config = load_configfile(config_file[0])
+    # set defualt parameter
+    if 'mail' not in config.keys():
+        config['mail'] = False
+    if 'bark' not in config.keys():
+        config['bark'] = False
     # check_config
     if not check_config(config):
         sys.exit(1)
