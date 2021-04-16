@@ -115,6 +115,7 @@ def check_duplication(file, dup_file):
         return False
     return True
 
+
 def bark_notification(api, contents):
     base_url = api
     content = quote(contents)

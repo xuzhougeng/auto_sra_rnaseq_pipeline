@@ -74,6 +74,9 @@ python3 /path/to/auto_sra_rnaseq_pipeline/run.py unfinished config.yaml 79
 snakemake --configfile config.yaml -s auto_sra_rnaseq_pipeline/Snakefile  --unlock
 ```
 
+如果通过Kill或者ctrl+C的方法停止已经运行的进程，已经移动到metadata中的文件不会移动回unfinished中，需要我们自己动手移动。
+
+
 ## 配置文件说明
 
 

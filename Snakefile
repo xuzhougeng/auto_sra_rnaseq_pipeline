@@ -160,13 +160,14 @@ rule all:
 rule data_downloader:
     priority: 5
     params: 
-        sra_id = lambda wildcards: wildcards.sra
+        sra_id = lambda wildcards: wildcards.sra,
+        maxsize = "100G"
     output: temp("sra/{sra}/{sra}.sra")
     threads: config['download_threads']
     conda:
         "envs/download.yaml"
     shell:"""
-    prefetch -O sra {params.sra_id} && \
+    prefetch --max-size {params.maxsize} -O sra {params.sra_id} && \
         [[ ! -f {output} ]] && \
         mv sra/{params.sra_id}.sra {output} || \
         echo "{params.sra_id} finished download"
