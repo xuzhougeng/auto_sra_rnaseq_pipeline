@@ -140,10 +140,12 @@ def get_snakefile(root_dir = ".", file = "Snakefile"):
         sys.exit("Unable to locate the Snakemake workflow file;  tried %s" %sf)
     return sf
 
+# hard decode total download speed
 def run_snakemake(Snakefile, configfiles, cores):
     status = snakemake(snakefile= Snakefile, 
                       configfiles = configfiles, 
                       cores = cores,
+                      resources= {"rx": 80},
                       force_incomplete = True,
                       latency_wait = 5,
                       attempt = 3)
@@ -223,7 +225,7 @@ def main(root_dir, args):
             if config['feishu']:
                 feishu_notification(config['feishu_api'], contents)    
             finished_file = glob.glob( os.path.join(metdata_dir,  "*.txt") )
-            for i in range(min(parallel, len(finished_file))):
+            for _ in range(min(parallel, len(finished_file))):
                 file = finished_file.pop()
                 shutil.move(file, finished_dir)
         else:
@@ -232,7 +234,7 @@ def main(root_dir, args):
                 bark_notification(config['bark_api'], contents)
             if config['feishu']:
                 feishu_notification(config['feishu_api'], contents)           
-            for i in range(len(todo_files)):
+            for _ in range(len(todo_files)):
                 file = todo_files.pop()
                 shutil.move(file, "unfinished")
             sys.exit(1)
@@ -241,5 +243,3 @@ if __name__ == '__main__':
     root_dir = os.path.dirname(os.path.abspath(__file__))
     args = sys.argv
     main(root_dir, args) 
-
-

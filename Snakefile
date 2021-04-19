@@ -164,6 +164,8 @@ rule data_downloader:
         maxsize = "100G"
     output: temp("sra/{sra}/{sra}.sra")
     threads: config['download_threads']
+    resources:
+        rx = 40
     conda:
         "envs/download.yaml"
     shell:"""
