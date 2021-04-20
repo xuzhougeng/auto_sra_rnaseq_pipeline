@@ -207,10 +207,10 @@ def main(root_dir, args):
             file = sample_files.pop()
             if check_finished(file, finished_dict=file_dict):
                 shutil.move(file, finished_dir)
-                todo_files.append(os.path.join( finished_dir ,os.path.basename(file)) )
+                #todo_files.append(os.path.join( finished_dir ,os.path.basename(file)) )
             elif check_duplication(file, dup_file=dup_file):
                 shutil.move(file, duplication_dir)
-                todo_files.append(os.path.join( duplication_dir ,os.path.basename(file)) )
+                #todo_files.append(os.path.join( duplication_dir ,os.path.basename(file)) )
             else:
                 shutil.move(file, metdata_dir)
                 todo_files.append(os.path.join( metdata_dir ,os.path.basename(file))  )

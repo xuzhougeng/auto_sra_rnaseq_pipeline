@@ -171,9 +171,11 @@ rule data_downloader:
     shell:"""
     prefetch --max-size {params.maxsize} -O sra {params.sra_id} && \
         [[ ! -f {output} ]] && \
-        mv sra/{params.sra_id}.sra {output} || \
-        echo "{params.sra_id} finished download"
+        mv sra/{params.sra_id}.sra {output}
     """
+##       || \
+##        echo "{params.sra_id} finished download"
+##    """
 
 include: "rules/single_end_process.smk" # single end
 include: "rules/paired_end_process.smk" # pair end
