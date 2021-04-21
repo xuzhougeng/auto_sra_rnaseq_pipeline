@@ -55,7 +55,8 @@ def remove_finished(sample_files, finished_file, finished_dir):
     
     for file in sample_files:
         if os.path.basename(file) in files_set:
-            shutil.move(file, finished_dir)
+            if not os.path.exists(os.path.join(finished_dir, os.path.basename(file))):
+                shutil.move(file, finished_dir)
             sample_files.remove(file)
     return sample_files
 
