@@ -200,7 +200,7 @@ def main(root_dir, args):
 
     sf = get_snakefile(root_dir, "Snakefile")
     
-    todo_files = []
+    #todo_files = []
 
     while len(sample_files) > 0 :
         for i in range(min(parallel, len(sample_files))):
@@ -213,7 +213,7 @@ def main(root_dir, args):
                 #todo_files.append(os.path.join( duplication_dir ,os.path.basename(file)) )
             else:
                 shutil.move(file, metdata_dir)
-                todo_files.append(os.path.join( metdata_dir ,os.path.basename(file))  )
+                #todo_files.append(os.path.join( metdata_dir ,os.path.basename(file))  )
 
         status = run_snakemake(sf, config_file, cores )
         # move the finished file to finished
@@ -233,11 +233,12 @@ def main(root_dir, args):
             if config['bark']:
                 bark_notification(config['bark_api'], contents)
             if config['feishu']:
-                feishu_notification(config['feishu_api'], contents)           
-            for _ in range(len(todo_files)):
-                file = todo_files.pop()
+                feishu_notification(config['feishu_api'], contents)  
+            broken_file = glob.glob( os.path.join(metdata_dir,  "*.txt") )         
+            for _ in range(len(broken_file)):
+                file = broken_file.pop()
                 shutil.move(file, "unfinished")
-            sys.exit(1)
+            #sys.exit(1)
 
 if __name__ == '__main__':
     root_dir = os.path.dirname(os.path.abspath(__file__))

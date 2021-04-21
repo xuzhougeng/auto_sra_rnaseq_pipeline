@@ -295,7 +295,7 @@ onerror:
     contents = open(log, "r").read()
     if config['mail']:
     #if len(config["sender"]) > 0 and len(config["sender_password"]) > 0:
-        send_mail(subject = "snakemake run failed", content = "snakemake run failed", 
+        send_mail(subject = "snakemake run failed", content = "snakemake run failed" + contents, 
             sender = config["sender"],
             sender_passwd = config["sender_password"],
             msg_to=config['mail_to'])
