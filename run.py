@@ -231,7 +231,11 @@ def main(root_dir, args):
             finished_file = glob.glob( os.path.join(metdata_dir,  "*.txt") )
             for _ in range(len(finished_file)):
                 file = finished_file.pop()
-                shutil.move(file, finished_dir)
+                if os.path.isfile(os.path.join(finished_dir, os.path.basename(file))):
+                   shutil.copy2(file, finished_dir)
+                   os.unlink(file)
+                else:
+                    shutil.move(file, finished_dir)
         else:
             contents = "snakemake run failed"
             if config['bark']:
