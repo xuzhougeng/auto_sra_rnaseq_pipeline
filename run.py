@@ -229,7 +229,7 @@ def main(root_dir, args):
             if config['feishu']:
                 feishu_notification(config['feishu_api'], contents)
             finished_file = glob.glob( os.path.join(metdata_dir,  "*.txt") )
-            for _ in range(min(parallel, len(finished_file))):
+            for _ in range(len(finished_file)):
                 file = finished_file.pop()
                 shutil.move(file, finished_dir)
         else:
