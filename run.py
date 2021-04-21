@@ -55,8 +55,9 @@ def remove_finished(sample_files, finished_file, finished_dir):
     
     for file in sample_files:
         if os.path.basename(file) in files_set:
-            if not os.path.exists(os.path.join(finished_dir, os.path.basename(file))):
-               shutil.move(file, finished_dir)
+            if os.path.isfile(os.path.join(finished_dir, os.path.basename(file))):
+               shutil.copy2(file, finished_dir)
+               os.unlink(file)
             sample_files.remove(file)
     return sample_files
 
@@ -74,8 +75,9 @@ def remove_duplication(sample_files, dup_file = ".file_duplication.json",
 
         if dict_key in dup_dict.keys() and \
             os.path.basename(file) != os.path.basename(dup_dict[dict_key]):
-            if not os.path.exists(os.path.join(duplication_dir, os.path.basename(file))):
-                shutil.move(file, duplication_dir)
+            if os.path.isfile(os.path.join(duplication_dir, os.path.basename(file))):
+                shutil.copy2(file, duplication_dir)
+                os.unlink(file)
             sample_files.remove(file)
         else:
             dup_dict[dict_key] = file
