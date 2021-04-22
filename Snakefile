@@ -168,6 +168,8 @@ rule data_downloader:
         rx = 40
     conda:
         "envs/download.yaml"
+    benchmark:
+        "benchmark/download/{sra}.tsv"
     shell:"""
     prefetch --max-size {params.maxsize} -O sra {params.sra_id} && \
         [[ ! -f {output} ]] && \
@@ -197,6 +199,8 @@ rule align_and_count:
     resources:
         mem_mb = lambda wildcards, attempt: 10000 if attempt == 1 else 60000 * (attempt-1)
     threads: config['star_threads']
+    benchmark:
+        "benchmark/STAR/{sample}.tsv"
     conda:
         "envs/align.yaml"
     log: os.path.join( "log", '{sample}_Log.final.out'),
