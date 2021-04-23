@@ -174,7 +174,7 @@ rule data_downloader:
     if [ ! -f {output} ] ;then \
         prefetch --max-size {params.maxsize} -O sra {params.sra_id} && mv sra/{params.sra_id}.sra {output} ;\
     elif [ -f sra/{params.sra_id}.lock ] ; then \
-        rm -f sra/{params.sra_id}.lock sra/{params.sra_id}.prf sra/{params.sra_id}.tmp && \
+        rm -f sra/{params.sra_id}.sra.lock sra/{params.sra_id}.sra.prf sra/{params.sra_id}.sra.tmp && \
         prefetch --max-size {params.maxsize} -O sra {params.sra_id} && mv sra/{params.sra_id}.sra {output} ;\
     elif [ -f {output} ] ;then \
         echo "{params.sra_id} has beed downloaded" ;\
