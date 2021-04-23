@@ -171,13 +171,13 @@ rule data_downloader:
     benchmark:
         "benchmark/download/{sra}.tsv"
     shell:"""
-    if [ ! -f {output} ] ;then \
-        prefetch --max-size {params.maxsize} -O sra {params.sra_id} && mv sra/{params.sra_id}.sra {output} ;\
-    elif [ -f sra/{params.sra_id}.lock ] ; then \
+    if [ -f {output} ] ;then \
+        echo "{params.sra_id} has beed downloaded" ;\   
+    elif [ -f sra/{params.sra_id}.sra.lock ] ; then \
         rm -f sra/{params.sra_id}.sra.lock sra/{params.sra_id}.sra.prf sra/{params.sra_id}.sra.tmp && \
         prefetch --max-size {params.maxsize} -O sra {params.sra_id} && mv sra/{params.sra_id}.sra {output} ;\
-    elif [ -f {output} ] ;then \
-        echo "{params.sra_id} has beed downloaded" ;\
+    elif [ ! -f {output} ] ;then \
+        prefetch --max-size {params.maxsize} -O sra {params.sra_id} && mv sra/{params.sra_id}.sra {output} ;\
     else  \
         exit 1 ;\
     fi

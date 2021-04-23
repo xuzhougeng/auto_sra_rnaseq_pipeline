@@ -164,7 +164,7 @@ def main(root_dir, args):
     unfinished_dir = args[1]
     config_file    = [args[2]]
     cores = 79 if len(args) <= 3 else int(args[3])
-    parallel = 5
+    parallel = 10 if len(args) <= 4 else int(args[4])
     # load config
     config = load_configfile(config_file[0])
     # set defualt parameter
