@@ -17,6 +17,8 @@ rule data_conversion_single:
     output: temp("sra/{sra}.fastq")
     conda:
         "envs/download.yaml"
+    resources:
+        limit = 1
     shell:"fastq-dump {input} -O sra" 
 
 rule merge_data:

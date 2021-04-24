@@ -149,7 +149,7 @@ def run_snakemake(Snakefile, configfiles, cores):
     status = snakemake(snakefile= Snakefile, 
                       configfiles = configfiles, 
                       cores = cores,
-                      resources= {"rx": 80},
+                      resources= {"rx": 80, 'limit': 5},
                       force_incomplete = True,
                       latency_wait = 5,
                       attempt = 3)

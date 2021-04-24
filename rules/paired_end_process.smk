@@ -28,6 +28,8 @@ rule data_conversion_pair:
         temp("sra/{sra}_2.fastq") 
     conda:
         "envs/download.yaml"
+    resources:
+        limit = 1
     shell:"fastq-dump --split-files {input} -O sra" 
 
 rule merge_R1_data:
