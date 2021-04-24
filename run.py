@@ -210,10 +210,12 @@ def main(root_dir, args):
         for i in range(min(parallel, len(sample_files))):
             file = sample_files.pop()
             if check_finished(file, finished_dict=file_dict):
-                shutil.move(file, finished_dir)
+                shutil.copy2(file, finished_dir)
+                os.unlink(file)
                 #todo_files.append(os.path.join( finished_dir ,os.path.basename(file)) )
             elif check_duplication(file, dup_file=dup_file):
-                shutil.move(file, duplication_dir)
+                shutil.copy2(file, duplication_dir)
+                os.unlink(file)
                 #todo_files.append(os.path.join( duplication_dir ,os.path.basename(file)) )
             else:
                 shutil.move(file, metdata_dir)
