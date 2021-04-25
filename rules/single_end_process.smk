@@ -18,12 +18,14 @@ rule data_conversion_single:
     conda:
         "envs/download.yaml"
     resources:
-        limit = 1
+        limit_dump = 1
     shell:"fastq-dump {input} -O sra" 
 
 rule merge_data:
     input: get_merged_input_data
     priority: 20
+    resources:
+        limit_merge = 1
     output: temp("00_raw_data/{sample}.fq.gz")
     shell: "cat {input} | pigz > {output}"
 

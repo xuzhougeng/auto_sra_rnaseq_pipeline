@@ -29,13 +29,15 @@ rule data_conversion_pair:
     conda:
         "envs/download.yaml"
     resources:
-        limit = 1
+        limit_dump = 1
     shell:"fastq-dump --split-files {input} -O sra" 
 
 rule merge_R1_data:
     input: get_merged_input_data_R1
     priority: 20
     threads: config['pigz_threads']
+    resources:
+        limit_merge = 1
     output: temp("00_raw_data/{sample}_R1.fq.gz")
     shell: "cat {input} | pigz -p {threads} > {output}"
 
@@ -43,6 +45,8 @@ rule merge_R2_data:
     input: get_merged_input_data_R2
     priority: 20
     threads: config['pigz_threads']
+    resources:
+        limit_merge = 1
     output: temp("00_raw_data/{sample}_R2.fq.gz")
     shell: "cat {input} | pigz -p {threads} > {output}"
 
