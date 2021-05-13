@@ -36,7 +36,7 @@ exprSet <- exprSet[keep, ]
 metadata <- data.table::fread(metapath,data.table = F)
 
 ### 3.diff analysis
-
+exprtSet <- exprtSet[, metadata$GSM]
 dds <- DESeqDataSetFromMatrix(countData = exprSet,
         colData = metadata, design = ~group, tidy = F)
 dds <- dds[rowSums(counts(dds))>1,]
