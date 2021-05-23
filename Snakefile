@@ -75,10 +75,16 @@ deseq_file =  []    # 记录着输出的差异表达的Rds名字
 metadata_dict = {}  # 字典, key为tsv文件名, value为对应的DataFrame
 
 sample_files = glob.glob( os.path.join(metadata,  "*.txt") )
+hash_set = set()
 for file in sample_files:
     df = pd.read_csv(file, sep = "\t")
     dict_key = "_".join(sorted(df['GSM'].to_list()))
     hash_value = myhash(dict_key)
+    # avoid hash collision
+    while (hash_value in hash_set):
+        hash_value += 1
+    hash_set.add(hash_value)
+
     file_dict[dict_key] = file 
     
     GSE_ID = np.unique(df['GSE'])[0]
