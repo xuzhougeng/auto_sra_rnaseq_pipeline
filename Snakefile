@@ -44,7 +44,7 @@ def myhash(string, size=8):
     hash_value = int( abs(hash_value) / math.pow(10, size) )
     hash_value = str(abs(hash_value))[0:8]
 
-    return hash_value
+    return int(hash_value)
 
 
 root_dir = os.path.dirname(os.path.abspath(workflow.snakefile))
