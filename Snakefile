@@ -6,10 +6,10 @@ import pandas as pd
 import numpy as np
 from collections import deque
 
-
-
-
 #print(workflow.scheduler_type, file = sys.stderr)
+
+# Auxiliary function
+
 def send_mail(subject, content, 
               sender, sender_passwd, 
               smtp_server = 'smtp.qq.com',
@@ -46,6 +46,50 @@ def myhash(string, size=8):
 
     return int(hash_value)
 
+# get the input data of R1 and R2 or single
+# get input GSM data
+def get_input_data(wildcards):
+    
+    df = metadata_df
+    sample = wildcards.sample
+    paired = df.loc[df['GSM'] == sample, 'paired'].tolist()[0]  == "PAIRED"
+    if paired:
+        return [ os.path.join("01_clean_data", sample + '_R1.fq.gz'), 
+        os.path.join("01_clean_data",sample + '_R2.fq.gz')]
+    else:
+        return [  os.path.join("01_clean_data", sample + '.fq.gz') ]
+
+# get GSM ID
+def get_counts_file(wildcards):
+    number  = wildcards.number
+    GSE_ID = wildcards.GSE_ID
+    gene   = wildcards.gene
+    df = metadata_dict["{}_{}_{}".format(GSE_ID, gene, number)]
+    samples =  df['GSM'].to_list()
+    count_files = ["02_read_align/{sample}_ReadsPerGene.out.tab".format(sample=sample) for sample in samples]
+    return  count_files
+
+# get the count and meta
+def get_counts_and_meta(wildcards):
+    number  = wildcards.number
+    GSE_ID = wildcards.GSE_ID
+    gene   = wildcards.gene
+    df = metadata_dict["{}_{}_{}".format(GSE_ID, gene, number)]
+    dict_key = "_".join(sorted(df['GSM'].to_list() ) )
+    meta_file =  file_dict[dict_key]
+    counts_file  =  "03_merged_counts/{}_{}_{}.tsv".format(GSE_ID, gene, number)
+    return [counts_file, meta_file]
+
+# get the dictionary
+def get_dict(wildcards):
+    number  = wildcards.number
+    GSE_ID = wildcards.GSE_ID
+    gene   = wildcards.gene
+    df = metadata_dict["{}_{}_{}".format(GSE_ID, gene, number)]
+    dict_key = "_".join(sorted(df['GSM'].to_list() ) )
+    return dict_key
+
+
 
 root_dir = os.path.dirname(os.path.abspath(workflow.snakefile))
 script_dir = os.path.join(root_dir, "scripts")
@@ -59,13 +103,14 @@ configfile: "config.yaml"
 # get metadata file directory
 metadata = config['metadata']
 
-file_dict = {}
-# file_dict.json:  key为GSE号的排序后组合, value为count+原始文件名
-# 每次处理新的文件的时候, 通过对key的查找，可以用来确定该文件是否已经处理过
+file_dict = {} # file_dict.json:  key为GSE号的排序后组合, value为count+原始文件名
 
-if os.path.exists("file_dict.json"):
-    with open("file_dict.json", "r") as f:
-        file_dict = json.load(f)
+# 如下代码暂时作废，通过snakemake 自己标记状态
+# # 每次处理新的文件的时候, 通过对key的查找，可以用来确定该文件是否已经处理过
+
+# if os.path.exists("file_dict.json"):
+#     with open("file_dict.json", "r") as f:
+#         file_dict = json.load(f)
 
 
 # 新的文件
@@ -97,7 +142,6 @@ for file in sample_files:
     metadata_dict["{}_{}_{}".format(GSE_ID, gene, hash_value)] = df
 
 
-
 # 记录所有元信息, 用于后续查询
 # 如果counts_file 没有内容，则直接退出
 if len(counts_file) > 0:
@@ -113,47 +157,6 @@ samples =  metadata_df['GSM'].to_list()
 
 bigwig_files = expand('04_bigwig/{sample}.bw', sample = samples)
 
-# get the input data of R1 and R2 or single
-
-# get input GSM data
-def get_input_data(wildcards):
-    
-    df = metadata_df
-    sample = wildcards.sample
-    paired = df.loc[df['GSM'] == sample, 'paired'].tolist()[0]  == "PAIRED"
-    if paired:
-        return [ os.path.join("01_clean_data", sample + '_R1.fq.gz'), 
-        os.path.join("01_clean_data",sample + '_R2.fq.gz')]
-    else:
-        return [  os.path.join("01_clean_data", sample + '.fq.gz') ]
-
-# get GSM ID
-def get_counts_file(wildcards):
-    number  = wildcards.number
-    GSE_ID = wildcards.GSE_ID
-    gene   = wildcards.gene
-    df = metadata_dict["{}_{}_{}".format(GSE_ID, gene, number)]
-    samples =  df['GSM'].to_list()
-    count_files = ["02_read_align/{sample}_ReadsPerGene.out.tab".format(sample=sample) for sample in samples]
-    return  count_files
-
-def get_counts_and_meta(wildcards):
-    number  = wildcards.number
-    GSE_ID = wildcards.GSE_ID
-    gene   = wildcards.gene
-    df = metadata_dict["{}_{}_{}".format(GSE_ID, gene, number)]
-    dict_key = "_".join(sorted(df['GSM'].to_list() ) )
-    meta_file =  file_dict[dict_key]
-    counts_file  =  "03_merged_counts/{}_{}_{}.tsv".format(GSE_ID, gene, number)
-    return [counts_file, meta_file]
-
-def get_dict(wildcards):
-    number  = wildcards.number
-    GSE_ID = wildcards.GSE_ID
-    gene   = wildcards.gene
-    df = metadata_dict["{}_{}_{}".format(GSE_ID, gene, number)]
-    dict_key = "_".join(sorted(df['GSM'].to_list() ) )
-    return dict_key
 
 localrules: all, data_downloader
 rule all:
@@ -286,11 +289,14 @@ rule DGE_analysis:
     priority: 35
     params:
         script_dir = script_dir,
-        dict_key = lambda wildcards : get_dict(wildcards)
+        #dict_key = lambda wildcards : get_dict(wildcards)
     shell:"""
-    Rscript {params.script_dir}/DESeq2_diff.R "{input[0]}" "{input[1]}" "{output}" &&
-    python {params.script_dir}/update_json.py {params.dict_key} "{input[1]}"
+    Rscript {params.script_dir}/DESeq2_diff.R "{input[0]}" "{input[1]}" "{output}"
     """
+    # shell:"""
+    # Rscript {params.script_dir}/DESeq2_diff.R "{input[0]}" "{input[1]}" "{output}" &&
+    # python {params.script_dir}/update_json.py {params.dict_key} "{input[1]}"
+    # """
 
 onsuccess:
     print("Deleting the unnessary file")
