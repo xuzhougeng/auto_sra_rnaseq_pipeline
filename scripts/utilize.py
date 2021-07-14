@@ -1,13 +1,16 @@
 
-from posixpath import basename, join
+import json
+import sqlite3
+
 import pandas as pd
 import numpy as np
-import sqlite3
+
+from os.path import basename, join
 from urllib import request
 from urllib.request import urlopen
 from urllib.parse import quote
 from urllib.parse import urljoin
-import json
+
 
 pd.set_option("display.max_columns", None)
 
