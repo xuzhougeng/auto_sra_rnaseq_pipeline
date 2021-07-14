@@ -5,7 +5,7 @@ import json
 import pandas as pd
 import numpy as np
 from collections import deque
-from .scripts.utilize import table_from_sql
+from scripts.utilize import table_from_sql
 
 #print(workflow.scheduler_type, file = sys.stderr)
 

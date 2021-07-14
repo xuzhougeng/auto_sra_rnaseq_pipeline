@@ -136,9 +136,10 @@ def main(root_dir, args):
     else:
         # otherwise, upgrade the db
         df = build_metadata_table(sample_files, table_name="meta", db=db)
-        df2 = build_sample_table(df, unfinished_dir)
-        table_to_sql(df, table_name="meta", db=db)
-        table_to_sql(df2, table_name="sample", db=db)
+        if df.shape[0] > 0 and df.shape[1] > 0:
+            table_to_sql(df, table_name="meta", db=db)
+            df2 = build_sample_table(df, unfinished_dir)
+            table_to_sql(df2, table_name="sample", db=db)
 
     # get the unfinished meta files
     df = table_from_sql( table_name = "meta", db = db )
