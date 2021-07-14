@@ -52,7 +52,7 @@ def get_input_data(wildcards):
 
 # get metadata
 def get_sample_info(accession):
-    df = sample_df.loc[ sample_df['accession'].isin(accession), ]
+    df = sample_df.loc[ sample_df['accession'].isin([accession]), ]
     return  df
 
 # get GSM ID
@@ -75,8 +75,8 @@ def get_counts_and_meta(wildcards):
     gene   = wildcards.gene
     accession = "{}_{}_{}".format(GSE_ID, gene, number)
 
-    counts_file = metadata_df.loc[metadata_df['accession'].isin(accession), 'count_file']
-    meta_file = metadata_df.loc[metadata_df['accession'].isin(accession), 'meta_file']
+    counts_file = metadata_df.loc[metadata_df['accession'].isin([accession]), 'count_file']
+    meta_file = metadata_df.loc[metadata_df['accession'].isin([accession]), 'meta_file']
     meta_file = join(metadata_dir, meta_file)
 
     return [counts_file, meta_file]
