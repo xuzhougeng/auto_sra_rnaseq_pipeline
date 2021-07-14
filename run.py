@@ -143,6 +143,7 @@ def main(root_dir, args):
     # get the unfinished meta files
     df = table_from_sql( table_name = "meta", db = db )
     sample_files = df.loc[df['status'] == 0, 'meta_file'].to_list()
+    sample_files = [os.path.join(unfinished_dir, f) for f in sample_files ]
     
     sf = get_snakefile(root_dir, "Snakefile")
     
