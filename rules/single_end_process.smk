@@ -1,5 +1,5 @@
 def get_merged_input_data(wildcards):
-    df = metadata_df
+    df = sample_df
     sample = wildcards.sample
 
     SRR_ID = df.loc[df['GSM'] == sample, "SRR"].tolist()[0]

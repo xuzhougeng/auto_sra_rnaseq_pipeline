@@ -112,7 +112,7 @@ def update_status( sample_name, table_name, db):
     con = sqlite3.connect(db)
     # save record to database
     cur = con.cursor()
-    cmd = "UPDATE {} SET {} = {} WHERE {} = {}".format(table_name, "status", "1", meta_file = basename(sample_name));
+    cmd = "UPDATE {} SET {} = {} WHERE {} = {}".format(table_name, "status", "1", "meta_file" , basename(sample_name))
     cur.execute(cmd)
     con.commit()
     # close the connection
