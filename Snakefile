@@ -61,7 +61,7 @@ def get_counts_file(wildcards):
     number  = wildcards.number
     GSE_ID = wildcards.GSE_ID
     gene   = wildcards.gene
-    accesion = "{}_{}_{}".format(GSE_ID, gene, number)
+    accession = "{}_{}_{}".format(GSE_ID, gene, number)
     df = get_sample_info(accession)
 
     samples =  df['GSM'].to_list()
@@ -73,7 +73,7 @@ def get_counts_and_meta(wildcards):
     number  = wildcards.number
     GSE_ID = wildcards.GSE_ID
     gene   = wildcards.gene
-    accesion = "{}_{}_{}".format(GSE_ID, gene, number)
+    accession = "{}_{}_{}".format(GSE_ID, gene, number)
 
     counts_file = metadata_df.loc[metadata_df['accession'].isin(accession), 'count_file']
     meta_file = metadata_df.loc[metadata_df['accession'].isin(accession), 'meta_file']
@@ -102,13 +102,13 @@ sample_file_names = [ basename(f) for f in sample_files ]
 metadata_df = table_from_sql(table_name = "meta", db=db)
 metadata_df = metadata_df.loc[metadata_df['meta_file'].isin(sample_file_names), ]
 
-accessions = metadata_df['accesion']
+accessions = metadata_df['accession']
 counts_file = metadata_df['count_file']
 deseq_file  = metadata_df['deseq_file']
 
 # 记录所有的元信息, 用于后续查询
 sample_df = table_from_sql(table_name = "sample", db=db)
-sample_df = sample_df.loc[sample_df['accesion'].isin(accessions), ]
+sample_df = sample_df.loc[sample_df['accession'].isin(accessions), ]
 
 
 # 如果counts_file 没有内容，则直接退出
