@@ -36,17 +36,6 @@ def send_mail(subject, content,
     finally:
         client.quit()
 
-# define hash function
-def myhash(string, size=8):
-    import math
-    string = string.replace("GSM", "")
-    string = string.replace("_","0")[0:100]
-    hash_value = int(string)<< 4
-    hash_value = int( abs(hash_value) / math.pow(10, size) )
-    hash_value = str(abs(hash_value))[0:8]
-
-    return int(hash_value)
-
 # get the input data of R1 and R2 or single
 # get input GSM data
 def get_input_data(wildcards):
@@ -60,12 +49,20 @@ def get_input_data(wildcards):
     else:
         return [  os.path.join("01_clean_data", sample + '.fq.gz') ]
 
+# get metadata
+def get_sample_info(accession):
+    df = sample_df.loc[ sample_df['accession'].isin(accession), ]
+    return  df
+
 # get GSM ID
 def get_counts_file(wildcards):
+
     number  = wildcards.number
     GSE_ID = wildcards.GSE_ID
     gene   = wildcards.gene
-    df = metadata_dict["{}_{}_{}".format(GSE_ID, gene, number)]
+    accesion = "{}_{}_{}".format(GSE_ID, gene, number)
+    df = get_sample_info(accession)
+
     samples =  df['GSM'].to_list()
     count_files = ["02_read_align/{sample}_ReadsPerGene.out.tab".format(sample=sample) for sample in samples]
     return  count_files
@@ -75,21 +72,13 @@ def get_counts_and_meta(wildcards):
     number  = wildcards.number
     GSE_ID = wildcards.GSE_ID
     gene   = wildcards.gene
-    df = metadata_dict["{}_{}_{}".format(GSE_ID, gene, number)]
-    dict_key = "_".join(sorted(df['GSM'].to_list() ) )
-    meta_file =  file_dict[dict_key]
-    counts_file  =  "03_merged_counts/{}_{}_{}.tsv".format(GSE_ID, gene, number)
+    accesion = "{}_{}_{}".format(GSE_ID, gene, number)
+
+    counts_file = metadata_df.loc[metadata_df['accession'].isin(accession), 'count_file']
+    meta_file = metadata_df.loc[metadata_df['accession'].isin(accession), 'meta_file']
+    meta_file = join(metadata_dir, meta_file)
+
     return [counts_file, meta_file]
-
-# get the dictionary
-def get_dict(wildcards):
-    number  = wildcards.number
-    GSE_ID = wildcards.GSE_ID
-    gene   = wildcards.gene
-    df = metadata_dict["{}_{}_{}".format(GSE_ID, gene, number)]
-    dict_key = "_".join(sorted(df['GSM'].to_list() ) )
-    return dict_key
-
 
 
 root_dir = os.path.dirname(os.path.abspath(workflow.snakefile))
@@ -98,16 +87,15 @@ if not os.path.exists(script_dir):
     sys.exit("Unable to locate the Snakemake workflow file;  tried %s" %script_dir)
 
 # get the scripts dir
-
 configfile: "config.yaml"
 
 # get metadata file directory
-metadata = config['metadata']
+metadata_dir = config['metadata']
 
 # retrieve the data from database
 db = "meta_info.sqlite3"
 
-sample_files = glob.glob( os.path.join(metadata,  "*.txt") )
+sample_files = glob.glob( os.path.join(metadata_dir,  "*.txt") )
 sample_file_names = [ basename(f) for f in sample_files ]
 
 metadata_df = table_from_sql(table_name = "meta", db=db)
@@ -128,8 +116,8 @@ if len(counts_file) < 0:
     os._exit(0)
 
 
+# bigwig file list
 samples =  sample_df['GSM'].to_list()
-
 bigwig_files = expand('04_bigwig/{sample}.bw', sample = samples)
 
 
@@ -264,14 +252,10 @@ rule DGE_analysis:
     priority: 35
     params:
         script_dir = script_dir,
-        #dict_key = lambda wildcards : get_dict(wildcards)
     shell:"""
     Rscript {params.script_dir}/DESeq2_diff.R "{input[0]}" "{input[1]}" "{output}"
     """
-    # shell:"""
-    # Rscript {params.script_dir}/DESeq2_diff.R "{input[0]}" "{input[1]}" "{output}" &&
-    # python {params.script_dir}/update_json.py {params.dict_key} "{input[1]}"
-    # """
+
 
 onsuccess:
     print("Deleting the unnessary file")
