@@ -25,7 +25,7 @@ def myhash(string, size=8):
     return int(hash_value)
 
 # meta_files: metadata sample files
-def build_metadata_table(meta_files:list, table_name:str, db:str):
+def build_metadata_table(meta_files:list, table_name:str = None, db:str = None):
     
     hash_set = set()
     sample_files = [] 
@@ -79,7 +79,7 @@ def build_metadata_table(meta_files:list, table_name:str, db:str):
     return df
 
 # meta_files: metadata sample files
-def build_sample_table(df:pd.DataFrame, file_dir:str, sep = "\t"):
+def build_sample_table(df:pd.DataFrame, file_dir:str = None, sep = "\t"):
     
     sample_dict = {}
 

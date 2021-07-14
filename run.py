@@ -11,9 +11,9 @@ from pandas.core import base
 from snakemake import snakemake
 from snakemake.io import load_configfile
 
-from .scripts.utilize import bark_notification, feishu_notification
-from .scripts.utilize import build_metadata_table, build_sample_table
-from .scripts.utilize import table_to_sql, table_from_sql, update_status
+from scripts.utilize import bark_notification, feishu_notification
+from scripts.utilize import build_metadata_table, build_sample_table
+from scripts.utilize import table_to_sql, table_from_sql, update_status
 
 # check config
 def check_config(config):
