@@ -6,19 +6,14 @@ import shutil
 import pandas as pd
 import json
 
-from urllib import request, parse
-from urllib.request import urlopen
-from urllib.parse import quote
-from urllib.parse import urljoin
-
 from pandas.core import base
 
 from snakemake import snakemake
 from snakemake.io import load_configfile
 
-# arguments order
-# 
-
+from .scripts.utilize import bark_notification, feishu_notification
+from .scripts.utilize import build_metadata_table, build_sample_table
+from .scripts.utilize import table_to_sql, table_from_sql, update_status
 
 # check config
 def check_config(config):
@@ -42,24 +37,6 @@ def check_config(config):
             return False
 
     return True
-
-# deprecated: remove the finished samples
-# def remove_finished(sample_files, finished_file, finished_dir):
-#     if not os.path.exists(finished_file):
-#         return sample_files
-    
-#     with open(finished_file, "r") as f:
-#         file_dict = json.load(f)
-    
-#     files_set = set([ os.path.basename(f) for f in file_dict.values() ])
-    
-#     for file in sample_files:
-#         if os.path.basename(file) in files_set:
-#             if os.path.isfile(os.path.join(finished_dir, os.path.basename(file))):
-#                shutil.copy2(file, finished_dir)
-#                os.unlink(file)
-#             sample_files.remove(file)
-#     return sample_files
 
 # remove the depulication samples aside loop
 def remove_duplication(sample_files, dup_file = ".file_duplication.json", 
@@ -87,56 +64,6 @@ def remove_duplication(sample_files, dup_file = ".file_duplication.json",
             json.dump(dup_dict, f)
 
     return sample_files
-
-
-# deprecated: check whether new job  was finished or not ?
-# def check_finished(file, finished_dict):
-#     if not os.path.exists(finished_dict):
-#         return False
-#     with open(finished_dict, "r") as f:
-#         file_dict = json.load(f)
-    
-#     if file in file_dict.keys():
-#         if os.path.basename(file) == os.path.basename(file_dict[file]):
-#             return True
-#     return False
-
-def check_duplication(file, dup_file):
-    dup_dict = {}
-    if os.path.exists(dup_file):
-        with open(dup_file, "r") as f:
-            dup_dict = json.load(f)
-    
-    df = pd.read_csv(file, sep = "\t")
-    dict_key = "_".join(sorted(df['GSM'].to_list()))
-
-    if dict_key not in dup_dict.keys():
-        dup_dict[dict_key] = file
-        with open(dup_file, "w") as f:
-            json.dump(dup_dict, f)
-        return False
-    if os.path.basename(file) == os.path.basename(dup_dict[dict_key]):
-        return False
-    return True
-
-
-def bark_notification(api, contents):
-    base_url = api
-    content = quote(contents)
-    full_url = urljoin(base_url,  content)
-    urlopen(full_url)
-
-def feishu_notification(api,contents):
-    req =  request.Request(api, method="POST") # this will make the method "POST"
-    req.add_header('Content-Type', 'application/json')
-    data_dict = {
-        "msg_type": "text",
-        "content": {"text": "进展报告: " + contents}
-    }
-    data = json.dumps(data_dict).encode()
-    resp = urlopen(req, data = data)
-    return  resp
-
 
 def get_snakefile(root_dir = ".", file = "Snakefile"):
     sf = os.path.join(root_dir, file)
@@ -191,21 +118,32 @@ def main(root_dir, args):
     if not os.path.exists(duplication_dir):
         os.makedirs(duplication_dir)
     
-    # file_dcit record the finished file which generate by snakemake workflow
-    # file_dict = "file_dict.json"
-    # file record the duplication
     
     dup_file = ".file_duplication.json"
     # preprocess
     sample_files = glob.glob( os.path.join(unfinished_dir,  "*.txt") )
-
-    # remove finished samples
-    # sample_files = remove_finished(sample_files, file_dict, finished_dir)
-    
-    
     # remove duplication before running
     sample_files = remove_duplication(sample_files, dup_file, duplication_dir)
+    
+    # select unfinished files
+    db = "meta_info.sqlite3"
+    if not os.path.exists(db):
+        # create database if not exists 
+        df = build_metadata_table(sample_files)
+        df2 = build_sample_table(df, unfinished_dir)
+        table_to_sql(df, table_name="meta", db=db)
+        table_to_sql(df2, table_name="sample", db=db)
+    else:
+        # otherwise, upgrade the db
+        df = build_metadata_table(sample_files, table_name="meta", db=db)
+        df2 = build_sample_table(df, unfinished_dir)
+        table_to_sql(df, table_name="meta", db=db)
+        table_to_sql(df2, table_name="sample", db=db)
 
+    # get the unfinished meta files
+    df = table_from_sql( table_name = "meta", db = db )
+    sample_files = df.loc[df['status'] == 0, 'meta_file'].to_list()
+    
     sf = get_snakefile(root_dir, "Snakefile")
     
     #todo_files = []
@@ -213,18 +151,8 @@ def main(root_dir, args):
     while len(sample_files) > 0 :
         for i in range(min(parallel, len(sample_files))):
             file = sample_files.pop()
-            #if check_finished(file, finished_dict=file_dict):
-            #    shutil.copy2(file, finished_dir)
-            #    os.unlink(file)
-            #   #todo_files.append(os.path.join( finished_dir ,os.path.basename(file)) )
-            
-            if check_duplication(file, dup_file=dup_file):
-                shutil.copy2(file, duplication_dir)
-                os.unlink(file)
-                #todo_files.append(os.path.join( duplication_dir ,os.path.basename(file)) )
-            else:
-                shutil.move(file, metdata_dir)
-                #todo_files.append(os.path.join( metdata_dir ,os.path.basename(file))  )
+            shutil.move(file, metdata_dir)
+            #todo_files.append(os.path.join( metdata_dir ,os.path.basename(file))  )
 
         run_snakemake(sf, config_file, cores, unlock=True )
         status = run_snakemake(sf, config_file, cores )
@@ -239,6 +167,8 @@ def main(root_dir, args):
             finished_file = glob.glob( os.path.join(metdata_dir,  "*.txt") )
             for _ in range(len(finished_file)):
                 file = finished_file.pop()
+                update_status(file, table_name="meta", db = db)
+                
                 if os.path.isfile(os.path.join(finished_dir, os.path.basename(file))):
                    shutil.copy2(file, finished_dir)
                    os.unlink(file)

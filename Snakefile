@@ -5,6 +5,7 @@ import json
 import pandas as pd
 import numpy as np
 from collections import deque
+from .scripts.utilize import table_from_sql
 
 #print(workflow.scheduler_type, file = sys.stderr)
 
@@ -50,7 +51,7 @@ def myhash(string, size=8):
 # get input GSM data
 def get_input_data(wildcards):
     
-    df = metadata_df
+    df = sample_df
     sample = wildcards.sample
     paired = df.loc[df['GSM'] == sample, 'paired'].tolist()[0]  == "PAIRED"
     if paired:
@@ -103,57 +104,31 @@ configfile: "config.yaml"
 # get metadata file directory
 metadata = config['metadata']
 
-file_dict = {} # file_dict.json:  key为GSE号的排序后组合, value为count+原始文件名
-
-# 如下代码暂时作废，通过snakemake 自己标记状态
-# # 每次处理新的文件的时候, 通过对key的查找，可以用来确定该文件是否已经处理过
-
-# if os.path.exists("file_dict.json"):
-#     with open("file_dict.json", "r") as f:
-#         file_dict = json.load(f)
-
-
-# 新的文件
-
-counts_file = []    # 记录输出的tsv文件名
-deseq_file =  []    # 记录着输出的差异表达的Rds名字
-metadata_dict = {}  # 字典, key为tsv文件名, value为对应的DataFrame
+# retrieve the data from database
+db = "meta_info.sqlite3"
 
 sample_files = glob.glob( os.path.join(metadata,  "*.txt") )
-hash_set = set()
-for file in sample_files:
-    df = pd.read_csv(file, sep = "\t")
-    dict_key = "_".join(sorted(df['GSM'].to_list()))
-    hash_value = myhash(dict_key)
-    # avoid hash collision
-    while (hash_value in hash_set):
-        hash_value += 1
-    hash_set.add(hash_value)
+sample_file_names = [ basename(f) for f in sample_files ]
 
-    file_dict[dict_key] = file 
-    
-    GSE_ID = np.unique(df['GSE'])[0]
-    gene   = np.unique(df['gene'])[0]
-    file_name = "03_merged_counts/{}_{}_{}.tsv".format(GSE_ID, gene, hash_value)
-    deseq_name = "05_DGE_analysis/{}_{}_{}.Rds".format(GSE_ID, gene, hash_value)
-    
-    counts_file.append(file_name)
-    deseq_file.append(deseq_name)
-    metadata_dict["{}_{}_{}".format(GSE_ID, gene, hash_value)] = df
+metadata_df = table_from_sql(table_name = "meta", db=db)
+metadata_df = metadata_df.loc[metadata_df['meta_file'].isin(sample_file_names), ]
+
+accessions = metadata_df['accesion']
+counts_file = metadata_df['count_file']
+deseq_file  = metadata_df['deseq_file']
+
+# 记录所有的元信息, 用于后续查询
+sample_df = table_from_sql(table_name = "sample", db=db)
+sample_df = sample_df.loc[sample_df['accesion'].isin(accessions), ]
 
 
-# 记录所有元信息, 用于后续查询
 # 如果counts_file 没有内容，则直接退出
-if len(counts_file) > 0:
-    metadata_df = pd.concat(metadata_dict.values(), ignore_index=True)
-    rep_len = list(map(len, metadata_dict.values()))
-    metadata_df['key'] = np.repeat(list(metadata_dict.keys()), rep_len )
-else:
+if len(counts_file) < 0:
     print("no job to do")
     os._exit(0)
 
 
-samples =  metadata_df['GSM'].to_list()
+samples =  sample_df['GSM'].to_list()
 
 bigwig_files = expand('04_bigwig/{sample}.bw', sample = samples)
 
