@@ -6,9 +6,6 @@ import pandas as pd
 import numpy as np
 from collections import deque
 
-
-
-
 #print(workflow.scheduler_type, file = sys.stderr)
 def send_mail(subject, content, 
               sender, sender_passwd, 
@@ -44,7 +41,7 @@ def myhash(string, size=8):
     hash_value = int( abs(hash_value) / math.pow(10, size) )
     hash_value = str(abs(hash_value))[0:8]
 
-    return hash_value
+    return int(hash_value)
 
 
 root_dir = os.path.dirname(os.path.abspath(workflow.snakefile))
@@ -70,6 +67,7 @@ if os.path.exists("file_dict.json"):
 
 # 新的文件
 
+sra_files = []      # 记录SRA的文件命
 counts_file = []    # 记录输出的tsv文件名
 deseq_file =  []    # 记录着输出的差异表达的Rds名字
 metadata_dict = {}  # 字典, key为tsv文件名, value为对应的DataFrame
@@ -91,11 +89,12 @@ for file in sample_files:
     gene   = np.unique(df['gene'])[0]
     file_name = "03_merged_counts/{}_{}_{}.tsv".format(GSE_ID, gene, hash_value)
     deseq_name = "05_DGE_analysis/{}_{}_{}.Rds".format(GSE_ID, gene, hash_value)
-    
+    for sra_id in df['SRR'].to_list():
+        sra_files.append("sra/{sra}/{sra}.sra".format(sra=sra_id))
+   
     counts_file.append(file_name)
     deseq_file.append(deseq_name)
     metadata_dict["{}_{}_{}".format(GSE_ID, gene, hash_value)] = df
-
 
 
 # 记录所有元信息, 用于后续查询
@@ -162,13 +161,17 @@ rule all:
         counts_file,
         bigwig_files
         
+rule download:
+    input:
+        sra_files
+
 # download data from NCBI
 rule data_downloader:
     priority: 5
     params: 
         sra_id = lambda wildcards: wildcards.sra,
         maxsize = "100G"
-    output: temp("sra/{sra}/{sra}.sra")
+    output: "sra/{sra}/{sra}.sra"
     threads: config['download_threads']
     resources:
         rx = 40
