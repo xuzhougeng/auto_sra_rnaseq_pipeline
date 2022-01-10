@@ -1,5 +1,5 @@
 def get_merged_input_data_R1(wildcards):
-    df = metadata_df
+    df = sample_df
     sample = wildcards.sample
 
     SRR_ID = df.loc[df['GSM'] == sample, "SRR"].tolist()[0]
@@ -8,7 +8,7 @@ def get_merged_input_data_R1(wildcards):
     return [ "sra/{x}_1.fastq".format(x=x) for x in SRR_ID ]
 
 def get_merged_input_data_R2(wildcards):
-    df = metadata_df
+    df = sample_df
     sample = wildcards.sample
 
     SRR_ID = df.loc[df['GSM'] == sample, "SRR"].tolist()[0]
