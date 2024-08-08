@@ -167,8 +167,7 @@ script_dir = os.path.join(root_dir, "scripts")
 if not os.path.exists(script_dir):
     sys.exit("Unable to locate the Snakemake workflow file;  tried %s" %script_dir)
 
-# get the scripts dir
-configfile: "config.yaml"
+
 
 # get metadata file directory
 metadata_dir = config['metadata']
