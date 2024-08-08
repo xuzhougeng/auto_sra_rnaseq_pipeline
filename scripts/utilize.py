@@ -17,12 +17,12 @@ pd.set_option("display.max_columns", None)
 
 
 # define hash function
-def myhash(string, size=8):
+def myhash(string: str, size: int = 8) -> int:
     hash_value = hash(string)
     return abs(hash_value) % (10 ** size)
 
 # meta_files: metadata sample files
-def build_metadata_table(meta_files:list, table_name:str = None, db:str = None):
+def build_metadata_table(meta_files: list[str], table_name: str = None, db: str = None) -> pd.DataFrame:
     
     hash_set = set()
     sample_files = [] 
@@ -76,7 +76,7 @@ def build_metadata_table(meta_files:list, table_name:str = None, db:str = None):
     return df
 
 # meta_files: metadata sample files
-def build_sample_table(df:pd.DataFrame, file_dir:str = None, sep = "\t"):
+def build_sample_table(df: pd.DataFrame, file_dir: str = None, sep: str = "\t") -> pd.DataFrame:
     
     sample_dict = {}
 
@@ -92,7 +92,7 @@ def build_sample_table(df:pd.DataFrame, file_dir:str = None, sep = "\t"):
 
     return samples_df 
 
-def table_to_sql(df, table_name, db):
+def table_to_sql(df: pd.DataFrame, table_name: str, db: str) -> None:
     # create or connect to databse
     con = sqlite3.connect(db)
     # save record to database
@@ -101,7 +101,7 @@ def table_to_sql(df, table_name, db):
     con.close()
     return
 
-def update_status( sample_name, table_name, db):
+def update_status(sample_name: str, table_name: str, db: str) -> None:
     # create or connect to databse
     con = sqlite3.connect(db)
     # save record to database
@@ -115,20 +115,20 @@ def update_status( sample_name, table_name, db):
     return
 
 
-def table_from_sql( table_name, db):
+def table_from_sql(table_name: str, db: str) -> pd.DataFrame:
     con = sqlite3.connect(db)
     df = pd.read_sql('SELECT * FROM {}'.format(table_name), con)
     con.close()
     return df
 
 # notification
-def bark_notification(api, contents):
+def bark_notification(api: str, contents: str) -> None:
     base_url = api
     content = quote(contents)
     full_url = urljoin(base_url,  content)
     urlopen(full_url)
 
-def feishu_notification(api,contents):
+def feishu_notification(api: str, contents: str) -> None:
     req =  request.Request(api, method="POST") # this will make the method "POST"
     req.add_header('Content-Type', 'application/json')
     data_dict = {
