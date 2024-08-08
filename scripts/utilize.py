@@ -145,3 +145,7 @@ def feishu_notification(api,contents):
     resp = urlopen(req, data = data)
     return  resp
 
+
+def myhash(string, size=8):
+    hash_value = hash(string)
+    return abs(hash_value) % (10 ** size)
