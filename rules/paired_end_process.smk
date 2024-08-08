@@ -1,18 +1,20 @@
 def get_merged_input_data_R1(wildcards):
     df = sample_df
     sample = wildcards.sample
+    separator = config.get('srr_separator', ',')
 
     SRR_ID = df.loc[df['GSM'] == sample, "SRR"].tolist()[0]
-    SRR_ID = SRR_ID.split(",")
+    SRR_ID = SRR_ID.split(separator)
 
     return [ "sra/{x}_1.fastq".format(x=x) for x in SRR_ID ]
 
 def get_merged_input_data_R2(wildcards):
     df = sample_df
     sample = wildcards.sample
+    separator = config.get('srr_separator', ',')
 
     SRR_ID = df.loc[df['GSM'] == sample, "SRR"].tolist()[0]
-    SRR_ID = SRR_ID.split(",")
+    SRR_ID = SRR_ID.split(separator)
 
     return [ "sra/{x}_2.fastq".format(x=x) for x in SRR_ID ]
 
