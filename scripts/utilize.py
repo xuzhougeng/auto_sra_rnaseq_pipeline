@@ -1,4 +1,10 @@
 
+"""
+Utility functions for RNA-Seq data processing.
+
+This module provides functions for building metadata tables, updating status,
+and sending notifications.
+"""
 import json
 import sqlite3
 
@@ -18,12 +24,33 @@ pd.set_option("display.max_columns", None)
 
 # define hash function
 def myhash(string, size=8):
+    """
+    Compute a hash value for a given string.
+
+    Args:
+        string (str): The input string to hash.
+        size (int): The size of the hash value. Default is 8.
+
+    Returns:
+        int: The computed hash value.
+    """
     hash_value = hash(string)
     return abs(hash_value) % (10 ** size)
 
 # meta_files: metadata sample files
 def build_metadata_table(meta_files:list, table_name:str = None, db:str = None):
     
+    """
+    Build a metadata table from a list of metadata files.
+
+    Args:
+        meta_files (list): List of metadata sample file paths.
+        table_name (str): Name of the table to store metadata. Default is None.
+        db (str): Path to the database file. Default is None.
+
+    Returns:
+        pd.DataFrame: DataFrame containing metadata information.
+    """
     hash_set = set()
     sample_files = [] 
     hash_values = []
@@ -35,7 +62,33 @@ def build_metadata_table(meta_files:list, table_name:str = None, db:str = None):
     existed_hash_set = set()
     existed_meta_files = set()
     if table_name is not None and db is not None:
-        con = sqlite3.connect(db)
+        """
+    Save a DataFrame to a SQL table.
+
+    Args:
+        df (pd.DataFrame): DataFrame to save.
+        table_name (str): Name of the table to save the DataFrame.
+        db (str): Path to the database file.
+    """
+    """
+    Update the status of a sample in the SQL table.
+
+    Args:
+        sample_name (str): Name of the sample to update.
+        table_name (str): Name of the table to update.
+        db (str): Path to the database file.
+    """
+    """
+    Retrieve a DataFrame from a SQL table.
+
+    Args:
+        table_name (str): Name of the table to retrieve data from.
+        db (str): Path to the database file.
+
+    Returns:
+        pd.DataFrame: DataFrame containing the table data.
+    """
+    con = sqlite3.connect(db)
         existed_df = table_from_sql(table_name=table_name, db=db)
         for idx, row in existed_df.iterrows():
             existed_hash_set.add(row['hash'])
@@ -78,6 +131,17 @@ def build_metadata_table(meta_files:list, table_name:str = None, db:str = None):
 # meta_files: metadata sample files
 def build_sample_table(df:pd.DataFrame, file_dir:str = None, sep = "\t"):
     
+    """
+    Build a sample table from a DataFrame and a directory of sample files.
+
+    Args:
+        df (pd.DataFrame): DataFrame containing metadata information.
+        file_dir (str): Directory containing sample files.
+        sep (str): Separator used in the sample files. Default is "\t".
+
+    Returns:
+        pd.DataFrame: DataFrame containing sample information.
+    """
     sample_dict = {}
 
     for idx, row in df.iterrows():
@@ -123,12 +187,29 @@ def table_from_sql( table_name, db):
 
 # notification
 def bark_notification(api, contents):
+    """
+    Send a notification using the Bark API.
+
+    Args:
+        api (str): The Bark API endpoint.
+        contents (str): The content of the notification.
+    """
     base_url = api
     content = quote(contents)
     full_url = urljoin(base_url,  content)
     urlopen(full_url)
 
 def feishu_notification(api,contents):
+    """
+    Send a notification using the Feishu API.
+
+    Args:
+        api (str): The Feishu API endpoint.
+        contents (str): The content of the notification.
+
+    Returns:
+        HTTPResponse: The response from the Feishu API.
+    """
     req =  request.Request(api, method="POST") # this will make the method "POST"
     req.add_header('Content-Type', 'application/json')
     data_dict = {
