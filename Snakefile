@@ -213,7 +213,7 @@ rule data_downloader:
     params: 
         sra_id = lambda wildcards: wildcards.sra,
         maxsize = "100G"
-    output: "sra/{sra}/{sra}.sra"
+    output: os.path.join(config['sra_download_path'], "{sra}", "{sra}.sra")
     threads: config['download_threads']
     resources:
         rx = 40
@@ -222,13 +222,14 @@ rule data_downloader:
     benchmark:
         "benchmark/download/{sra}.tsv"
     shell:"""
+    sra_dir={config['sra_download_path']}
     if [ -f {output} ] ;then \
-        echo "{params.sra_id} has beed downloaded" ;\   
-    elif [ -f sra/{params.sra_id}.sra.lock ] ; then \
-        rm -f sra/{params.sra_id}.sra.lock sra/{params.sra_id}.sra.prf sra/{params.sra_id}.sra.tmp && \
-        prefetch --max-size {params.maxsize} -O sra {params.sra_id} && mv sra/{params.sra_id}.sra {output} ;\
+        echo "{params.sra_id} has beed downloaded" ;\
+    elif [ -f {sra_dir}/{params.sra_id}.sra.lock ] ; then \
+        rm -f {sra_dir}/{params.sra_id}.sra.lock {sra_dir}/{params.sra_id}.sra.prf {sra_dir}/{params.sra_id}.sra.tmp && \
+        prefetch --max-size {params.maxsize} -O {sra_dir} {params.sra_id} && mv {sra_dir}/{params.sra_id}.sra {output} ;\
     elif [ ! -f {output} ] ;then \
-        prefetch --max-size {params.maxsize} -O sra {params.sra_id} && mv sra/{params.sra_id}.sra {output} ;\
+        prefetch --max-size {params.maxsize} -O {sra_dir} {params.sra_id} && mv {sra_dir}/{params.sra_id}.sra {output} ;\
     else  \
         exit 1 ;\
     fi
