@@ -37,7 +37,10 @@ def send_mail(subject, content,
     finally:
         client.quit()
 
-from scripts.utilize import myhash
+# define hash function
+def myhash(string, size=8):
+    hash_value = hash(string)
+    return abs(hash_value) % (10 ** size)
 
 
 root_dir = os.path.dirname(os.path.abspath(workflow.snakefile))
