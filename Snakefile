@@ -9,12 +9,9 @@ from collections import deque
 from scripts.utilize import table_from_sql
 
 #print(workflow.scheduler_type, file = sys.stderr)
-<<<<<<< HEAD
-=======
 
 # Auxiliary function
 
->>>>>>> de233bfa227def1bbc588c11a25a10a2d3885457
 def send_mail(subject, content, 
               sender, sender_passwd, 
               smtp_server = 'smtp.qq.com',
@@ -40,7 +37,6 @@ def send_mail(subject, content,
     finally:
         client.quit()
 
-<<<<<<< HEAD
 # define hash function
 def myhash(string, size=8):
     import math
@@ -121,8 +117,6 @@ samples =  metadata_df['GSM'].to_list()
 
 bigwig_files = expand('04_bigwig/{sample}.bw', sample = samples)
 
-=======
->>>>>>> de233bfa227def1bbc588c11a25a10a2d3885457
 # get the input data of R1 and R2 or single
 # get input GSM data
 def get_input_data(wildcards):
