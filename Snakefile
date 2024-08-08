@@ -127,6 +127,7 @@ def get_input_data(wildcards):
 # get metadata
 def get_sample_info(accession):
     df = sample_df.loc[ sample_df['accession'].isin([accession]), ]
+    df['condition'] = df['group'].map({'control': 'control', 'treat': 'treatment'})
     return  df
 
 # get GSM ID
