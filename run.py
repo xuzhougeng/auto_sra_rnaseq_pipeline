@@ -58,9 +58,11 @@ def run_snakemake(snakefile, configfiles, cores, unlock=False):
 					  unlock=unlock)
     return status
 
-from concurrent.futures import ThreadPoolExecutor, as_completed
+from concurrent.futures import ProcessPoolExecutor, as_completed
+import multiprocessing
 
-def process_sample_file(sample_file, metadata_dir, sf, config_file, cores, config):
+def process_sample_file(args):
+    sample_file, metadata_dir, sf, config_file, cores, config = args
     try:
         # Ensure the sample file is moved to the metadata directory
         shutil.move(sample_file, os.path.join(metadata_dir, os.path.basename(sample_file)))
@@ -155,8 +157,9 @@ def main(root_dir, args):
     sf = get_snakefile(root_dir, args[5] if len(args) > 5 else "Snakefile")
 
     # Process tasks
-    with ThreadPoolExecutor(max_workers=parallel) as executor:
-        future_to_task = {executor.submit(process_sample_file, metadata_file, metadata_dir, sf, config_file_path, cores, config): metadata_file for metadata_file, config in task_dict.items()}
+    with ProcessPoolExecutor(max_workers=parallel) as executor:
+        tasks = [(metadata_file, metadata_dir, sf, config_file_path, cores, config) for metadata_file, config in task_dict.items()]
+        future_to_task = {executor.submit(process_sample_file, task): task[0] for task in tasks}
         for future in as_completed(future_to_task):
             metadata_file = future_to_task[future]
             try:
