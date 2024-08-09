@@ -1,6 +1,7 @@
 
 import json
 import sqlite3
+import argparse
 
 import pandas as pd
 import numpy as np
@@ -10,7 +11,23 @@ from urllib import request
 from urllib.request import urlopen
 from urllib.parse import quote
 from urllib.parse import urljoin
+def main():
+    parser = argparse.ArgumentParser(description="Build metadata table from sample files.")
+    parser.add_argument("--meta_files", nargs='+', required=True, help="List of metadata sample files.")
+    parser.add_argument("--table_name", required=True, help="Name of the table to store metadata.")
+    parser.add_argument("--db", required=True, help="Path to the SQLite database.")
+    
+    args = parser.parse_args()
+    
+    meta_files = args.meta_files
+    table_name = args.table_name
+    db = args.db
+    
+    df = build_metadata_table(meta_files, table_name, db)
+    table_to_sql(df, table_name, db)
 
+if __name__ == "__main__":
+    main()
 
 pd.set_option("display.max_columns", None)
 
