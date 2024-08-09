@@ -40,15 +40,63 @@ def myhash(string, size=8):
     hash_value = hash(string)
     return abs(hash_value) % (10 ** size)
 
+# get the input data of R1 and R2 or single
+# get input GSM data
+def get_input_data(wildcards):
+    
+    df = sample_df
+    sample = wildcards.sample
+    paired = df.loc[df['GSM'] == sample, 'paired'].tolist()[0]  == "PAIRED"
+    if paired:
+        return [ os.path.join("01_clean_data", sample + '_R1.fq.gz'), 
+        os.path.join("01_clean_data",sample + '_R2.fq.gz')]
+    else:
+        return [  os.path.join("01_clean_data", sample + '.fq.gz') ]
+
+# get metadata
+def get_sample_info(accession):
+    df = sample_df.loc[ sample_df['accession'].isin([accession]), ]
+    df['condition'] = df['group'].map({'control': 'control', 'treat': 'treatment'})
+    return  df
+
+# get GSM ID
+def get_counts_file(wildcards):
+
+    number  = wildcards.number
+    GSE_ID = wildcards.GSE_ID
+    gene   = wildcards.gene
+    accession = "{}_{}_{}".format(GSE_ID, gene, number)
+    df = get_sample_info(accession)
+
+    samples =  df['GSM'].to_list()
+    count_files = ["02_read_align/{sample}_ReadsPerGene.out.tab".format(sample=sample) for sample in samples]
+    return  count_files
+
+# get the count and meta
+def get_counts_and_meta(wildcards):
+    number  = wildcards.number
+    GSE_ID = wildcards.GSE_ID
+    gene   = wildcards.gene
+    accession = "{}_{}_{}".format(GSE_ID, gene, number)
+
+    counts_file = metadata_df.loc[metadata_df['accession'].isin([accession]), 'count_file'].to_list()[0]
+    meta_file = metadata_df.loc[metadata_df['accession'].isin([accession]), 'meta_file'].to_list()[0]
+    meta_file = join(metadata_dir, meta_file)
+
+    return [counts_file, meta_file]
+
+
+
+# get the scripts dir
+
+configfile: "config.yaml"
+
 
 root_dir = os.path.dirname(os.path.abspath(workflow.snakefile))
 script_dir = os.path.join(root_dir, "scripts")
 if not os.path.exists(script_dir):
     sys.exit("Unable to locate the Snakemake workflow file;  tried %s" %script_dir)
 
-# get the scripts dir
-
-configfile: "config.yaml"
 
 # get metadata file directory
 metadata = config['metadata']
@@ -106,99 +154,8 @@ else:
 
 
 samples =  metadata_df['GSM'].to_list()
-
 bigwig_files = expand('04_bigwig/{sample}.bw', sample = samples)
 
-# get the input data of R1 and R2 or single
-# get input GSM data
-def get_input_data(wildcards):
-    
-    df = sample_df
-    sample = wildcards.sample
-    paired = df.loc[df['GSM'] == sample, 'paired'].tolist()[0]  == "PAIRED"
-    if paired:
-        return [ os.path.join("01_clean_data", sample + '_R1.fq.gz'), 
-        os.path.join("01_clean_data",sample + '_R2.fq.gz')]
-    else:
-        return [  os.path.join("01_clean_data", sample + '.fq.gz') ]
-
-# get metadata
-def get_sample_info(accession):
-    df = sample_df.loc[ sample_df['accession'].isin([accession]), ]
-    df['condition'] = df['group'].map({'control': 'control', 'treat': 'treatment'})
-    return  df
-
-# get GSM ID
-def get_counts_file(wildcards):
-
-    number  = wildcards.number
-    GSE_ID = wildcards.GSE_ID
-    gene   = wildcards.gene
-    accession = "{}_{}_{}".format(GSE_ID, gene, number)
-    df = get_sample_info(accession)
-
-    samples =  df['GSM'].to_list()
-    count_files = ["02_read_align/{sample}_ReadsPerGene.out.tab".format(sample=sample) for sample in samples]
-    return  count_files
-
-# get the count and meta
-def get_counts_and_meta(wildcards):
-    number  = wildcards.number
-    GSE_ID = wildcards.GSE_ID
-    gene   = wildcards.gene
-    accession = "{}_{}_{}".format(GSE_ID, gene, number)
-
-    counts_file = metadata_df.loc[metadata_df['accession'].isin([accession]), 'count_file'].to_list()[0]
-    meta_file = metadata_df.loc[metadata_df['accession'].isin([accession]), 'meta_file'].to_list()[0]
-    meta_file = join(metadata_dir, meta_file)
-
-    return [counts_file, meta_file]
-
-
-root_dir = os.path.dirname(os.path.abspath(workflow.snakefile))
-script_dir = os.path.join(root_dir, "scripts")
-if not os.path.exists(script_dir):
-    sys.exit("Unable to locate the Snakemake workflow file;  tried %s" %script_dir)
-
-
-
-# get metadata file directory
-metadata_dir = config['metadata']
-
-sample_files = glob.glob(os.path.join(metadata_dir, "*.txt"))
-sample_file_names = [basename(f) for f in sample_files]
-
-metadata_dict = {}
-counts_file = []
-deseq_file = []
-
-for file in sample_files:
-    df = pd.read_csv(file, sep="\t")
-    dict_key = "_".join(sorted(df['GSM'].to_list()))
-    hash_value = myhash(dict_key)
-    
-    GSE_ID = np.unique(df['GSE'])[0]
-    gene = np.unique(df['gene'])[0]
-    
-    file_name = f"03_merged_counts/{GSE_ID}_{gene}_{hash_value}.tsv"
-    deseq_name = f"05_DGE_analysis/{GSE_ID}_{gene}_{hash_value}.Rds"
-    
-    counts_file.append(file_name)
-    deseq_file.append(deseq_name)
-    metadata_dict[f"{GSE_ID}_{gene}_{hash_value}"] = df
-
-# 记录所有元信息, 用于后续查询
-if len(counts_file) > 0:
-    metadata_df = pd.concat(metadata_dict.values(), ignore_index=True)
-    rep_len = list(map(len, metadata_dict.values()))
-    metadata_df['key'] = np.repeat(list(metadata_dict.keys()), rep_len)
-    sample_df = metadata_df
-else:
-    print("no job to do")
-    os._exit(0)
-
-samples = metadata_df['GSM'].to_list()
-bigwig_files = expand('04_bigwig/{sample}.bw', sample=samples)
 
 
 localrules: all, data_downloader
