@@ -72,8 +72,8 @@ def get_snakefile(root_dir = ".", file = "Snakefile"):
     return sf
 
 # hard decode total download speed
-def run_snakemake(Snakefile, configfiles, cores, unlock=False):
-    status = snakemake(snakefile= Snakefile, 
+def run_snakemake(snakefile, configfiles, cores, unlock=False):
+    status = snakemake(snakefile= snakefile, 
                       configfiles = configfiles, 
                       cores = cores,
                       resources= {"rx": 80, 'limit_dump': 2, 'limit_merge': 2},
@@ -146,7 +146,7 @@ def main(root_dir, args):
     sample_files = df.loc[df['status'] == 0, 'meta_file'].to_list()
     sample_files = [os.path.join(unfinished_dir, f) for f in sample_files ]
     
-    sf = get_snakefile(root_dir, "Snakefile")
+    sf = get_snakefile(root_dir, args[5] if len(args) > 5 else "Snakefile")
     
     #todo_files = []
 
