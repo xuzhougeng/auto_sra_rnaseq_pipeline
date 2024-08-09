@@ -61,6 +61,7 @@ def run_snakemake(snakefile, configfiles, cores, unlock=False):
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
 def process_sample_file(sample_file, metadata_dir, sf, config_file, cores, config):
+def process_sample_file(sample_file, metadata_dir, sf, config_file, cores, config):
     # Ensure the sample file is moved to the metadata directory
     shutil.move(sample_file, metadata_dir)
     # Run Snakemake to unlock any potential issues
@@ -85,13 +86,6 @@ def process_sample_file(sample_file, metadata_dir, sf, config_file, cores, confi
             os.unlink(sample_file)
         else:
             shutil.move(sample_file, finished_sample_file)
-    else:
-        contents = "snakemake run failed"
-        if config['bark']:
-            bark_notification(config['bark_api'], contents)
-        if config['feishu']:
-            feishu_notification(config['feishu_api'], contents)
-        shutil.move(sample_file, os.path.join("unfinished", os.path.basename(sample_file)))
     else:
         contents = "snakemake run failed"
         if config['bark']:
