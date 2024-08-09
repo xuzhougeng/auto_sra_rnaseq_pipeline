@@ -96,8 +96,21 @@ def process_sample_file(sample_file, metadata_dir, sf, config_file, cores, confi
         return error_message
 
 def main(root_dir, args):
+    usage = """
+    Usage: python run.py <unfinished_dir> <config.yaml> [cores] [parallel] [Snakefile]
+    
+    Arguments:
+    unfinished_dir   : Directory containing unfinished metadata files
+    config.yaml      : Path to the configuration file
+    cores            : Number of cores to use (default: 79)
+    parallel         : Number of parallel tasks (default: 10)
+    Snakefile        : Path to custom Snakefile (default: 'Snakefile' in root directory)
+    
+    Example: python run.py unfinished config.yaml 40 5
+    """
+
     if len(args) < 3:
-        print("python run.py unfinished config.yaml cores")
+        print(usage)
         sys.exit(1)
 
     unfinished_dir = args[1]
