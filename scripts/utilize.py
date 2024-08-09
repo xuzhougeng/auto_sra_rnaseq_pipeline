@@ -125,9 +125,6 @@ def table_from_sql(table_name: str, db: str) -> pd.DataFrame:
 def bark_notification(api: str, contents: str) -> None:
     base_url = api
     content = quote(contents)
-    full_url = urljoin(base_url,  content)
-    urlopen(full_url)
-
 def feishu_notification(api: str, contents: str) -> None:
     req =  request.Request(api, method="POST") # this will make the method "POST"
     req.add_header('Content-Type', 'application/json')
@@ -139,3 +136,20 @@ def feishu_notification(api: str, contents: str) -> None:
     resp = urlopen(req, data = data)
     return  resp
 
+if __name__ == "__main__":
+    import argparse
+    
+    parser = argparse.ArgumentParser(description="Build metadata table from sample files")
+    parser.add_argument("meta_files", nargs="+", help="List of metadata sample files")
+    parser.add_argument("--table_name", default=None, help="Name of the table in the database")
+    parser.add_argument("--db", default=None, help="Path to the SQLite database")
+    
+    args = parser.parse_args()
+    
+    result_df = build_metadata_table(args.meta_files, args.table_name, args.db)
+    
+    print(result_df)
+    
+    if args.table_name and args.db:
+        table_to_sql(result_df, args.table_name, args.db)
+        print(f"Metadata table saved to {args.db} in table {args.table_name}")
