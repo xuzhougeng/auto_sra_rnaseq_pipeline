@@ -61,38 +61,35 @@ def run_snakemake(snakefile, configfiles, cores, unlock=False):
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
 def process_sample_file(sample_file, metadata_dir, sf, config_file, cores, config):
-def process_sample_file(sample_file, metadata_dir, sf, config_file, cores, config):
     # Ensure the sample file is moved to the metadata directory
-    shutil.move(sample_file, metadata_dir)
+    shutil.move(sample_file, os.path.join(metadata_dir, os.path.basename(sample_file)))
+    
+    # Update the config with the new metadata file path
+    config['metadata'] = os.path.join(metadata_dir, os.path.basename(sample_file))
+    
     # Run Snakemake to unlock any potential issues
-    run_snakemake(sf, config_file, cores, unlock=True)
+    run_snakemake(sf, [config_file], cores, unlock=True)
+    
     # Execute Snakemake with the provided configuration
-    status = run_snakemake(sf, config_file, cores)
+    status = run_snakemake(sf, [config_file], cores)
+    
     # Check the status and handle notifications accordingly
     if status:
-        # If Snakemake run is successful, send notifications if configured
         contents = "snakemake run successfully"
-        if config['bark']:
-            # Send Bark notification
+        if config.get('bark'):
             bark_notification(config['bark_api'], contents)
-        if config['feishu']:
-            # Send Feishu notification
+        if config.get('feishu'):
             feishu_notification(config['feishu_api'], contents)
 
-        finished_sample_file = os.path.join(finished_dir, os.path.basename(sample_file))
-        if os.path.isfile(finished_sample_file):
-            # Move or copy the sample file to the finished directory
-            shutil.copy2(sample_file, finished_sample_file)
-            os.unlink(sample_file)
-        else:
-            shutil.move(sample_file, finished_sample_file)
+        finished_sample_file = os.path.join("finished", os.path.basename(sample_file))
+        shutil.move(config['metadata'], finished_sample_file)
     else:
         contents = "snakemake run failed"
-        if config['bark']:
+        if config.get('bark'):
             bark_notification(config['bark_api'], contents)
-        if config['feishu']:
+        if config.get('feishu'):
             feishu_notification(config['feishu_api'], contents)
-        shutil.move(sample_file, os.path.join("unfinished", os.path.basename(sample_file)))
+        shutil.move(config['metadata'], os.path.join("unfinished", os.path.basename(sample_file)))
 
 def main(root_dir, args):
     if len(args) < 3:
