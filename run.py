@@ -68,24 +68,26 @@ def run_snakemake(snakefile, configfiles, cores, unlock=False):
 from concurrent.futures import ProcessPoolExecutor, as_completed
 import multiprocessing
 
-def process_config(args):
-    config_file, sf, cores = args
+def process_sample_file(args):
+    metadata_file, metadata_dir, sf, config_file, cores = args
     try:
-        # Load the config
-        with open(config_file, 'r') as f:
-            config = yaml.safe_load(f)
-        
         # Run Snakemake to unlock any potential issues
         run_snakemake(sf, [config_file], cores, unlock=True)
         
         # Execute Snakemake with the provided configuration
         status = run_snakemake(sf, [config_file], cores)
         
+        # Load the config to access notification settings
+        with open(config_file, 'r') as f:
+            config = yaml.safe_load(f)
+        
         # Check the status and handle notifications accordingly
         if status:
-            contents = f"Snakemake run successfully for {config_file}"
+            contents = f"Snakemake run successfully for {metadata_file}"
+            # Move the metadata file to finished directory
+            shutil.move(os.path.join(metadata_dir, metadata_file), os.path.join("finished", metadata_file))
         else:
-            contents = f"Snakemake run failed for {config_file}"
+            contents = f"Snakemake run failed for {metadata_file}"
         
         # Send notifications
         if config.get('bark'):
@@ -95,7 +97,7 @@ def process_config(args):
         
         return contents
     except Exception as e:
-        error_message = f"Error processing {config_file}: {str(e)}"
+        error_message = f"Error processing {metadata_file}: {str(e)}"
         print(error_message, file=sys.stderr)
         return error_message
 
@@ -168,7 +170,7 @@ def main(root_dir, args):
 
     # Process tasks
     with ProcessPoolExecutor(max_workers=parallel) as executor:
-        tasks = [(metadata_file, metadata_dir, sf, temp_config_file, cores) for metadata_file, temp_config_file in task_dict.items()]
+        tasks = [(metadata_file, unfinished_dir, sf, temp_config_file, cores) for metadata_file, temp_config_file in task_dict.items()]
         future_to_task = {executor.submit(process_sample_file, task): task[0] for task in tasks}
         for future in as_completed(future_to_task):
             metadata_file = future_to_task[future]
