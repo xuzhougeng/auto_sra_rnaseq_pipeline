@@ -141,7 +141,7 @@ rule align_and_count:
         GTF = config['GTF']
     output: 
         bam = temp("02_read_align/{sample}_Aligned.sortedByCoord.out.bam"),
-        counts = temp("02_read_align/{sample}_ReadsPerGene.out.tab")
+        counts = "02_read_align/{sample}_ReadsPerGene.out.tab"
     priority: 40
     resources:
         mem_mb = lambda wildcards, attempt: 10000 if attempt == 1 else 60000 * (attempt-1)
