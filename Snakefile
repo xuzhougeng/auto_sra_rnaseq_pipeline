@@ -51,15 +51,7 @@ if not os.path.exists(script_dir):
 # separated by '\t'
 metadata_file = config['metadata']
 metadata_df = pd.read_csv(metadata_file, sep = "\t")
-DB_ID = os.path.basename(file).replace(".txt", "")
-
-# 输入文件
-paired = df.loc[df['GSM'] == sample, 'paired'].tolist()[0]  == "PAIRED"
-if paired:
-    fastq_input = [ os.path.join("01_clean_data", sample + '_R1.fq.gz'), 
-    os.path.join("01_clean_data",sample + '_R2.fq.gz')]
-else:
-    fastq_input = [  os.path.join("01_clean_data", sample + '.fq.gz') ]
+DB_ID = os.path.basename(metadata_file).replace(".txt", "")
 
 
 # 中间文件: SRA的文件名
@@ -82,6 +74,17 @@ for sample in metadata_df['GSM'].to_list():
 expr_matrix_file = f"03_merged_counts/{DB_ID}.tsv"
 deseq_file  = f"05_DGE_analysis/{DB_ID}.Rds"
 
+
+# functions for generate input of Snakemake rules
+def get_input_data(wildcards):
+    df = metadata_df
+    sample = wildcards.sample
+    paired = df.loc[df['GSM'] == sample, 'paired'].tolist()[0]  == "PAIRED"
+    if paired:
+        return [ os.path.join("01_clean_data", sample + '_R1.fq.gz'), 
+        os.path.join("01_clean_data",sample + '_R2.fq.gz')]
+    else:
+        return [  os.path.join("01_clean_data", sample + '.fq.gz') ]
 
 
 localrules: all, data_downloader
@@ -130,7 +133,7 @@ include: "rules/paired_end_process.smk" # pair end
 # alignment
 rule align_and_count:
     input:
-        fastq_input
+        get_input_data
     wildcard_constraints:
         sample="[A-Za-z0-9]+"
     params:
