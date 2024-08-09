@@ -79,8 +79,8 @@ def get_counts_and_meta(wildcards):
     gene   = wildcards.gene
     accession = "{}_{}_{}".format(GSE_ID, gene, number)
 
-    counts_file = metadata_df.loc[metadata_df['key'].isin([accession]), 'count_file'].to_list()[0]
-    meta_file = metadata_df.loc[metadata_df['key'].isin([accession]), 'meta_file'].to_list()[0]
+    counts_file = metadata_df.loc[metadata_df['accession'].isin([accession]), 'count_file'].to_list()[0]
+    meta_file = metadata_df.loc[metadata_df['accession'].isin([accession]), 'meta_file'].to_list()[0]
     meta_file = join(metadata_dir, meta_file)
 
     return [counts_file, meta_file]
