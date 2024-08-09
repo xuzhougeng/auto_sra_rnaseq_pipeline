@@ -10,7 +10,6 @@ from urllib import request
 from urllib.request import urlopen
 from urllib.parse import quote
 from urllib.parse import urljoin
-import argparse
 
 
 pd.set_option("display.max_columns", None)
@@ -36,21 +35,7 @@ def build_metadata_table(meta_files: list[str], table_name: str = None, db: str 
     existed_hash_set = set()
     existed_meta_files = set()
     if table_name is not None and db is not None:
-if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Build metadata table from sample files.")
-    parser.add_argument("-m", "--meta_files", nargs="+", required=True, help="List of metadata sample files.")
-    parser.add_argument("-t", "--table_name", required=True, help="Name of the table to store metadata.")
-    parser.add_argument("-d", "--database", required=True, help="SQLite database file.")
-
-    args = parser.parse_args()
-
-    meta_files = args.meta_files
-    table_name = args.table_name
-    db = args.database
-
-    metadata_df = build_metadata_table(meta_files, table_name, db)
-    table_to_sql(metadata_df, table_name, db)
-    print(f"Metadata table '{table_name}' has been updated in the database '{db}'.")   con = sqlite3.connect(db)
+        con = sqlite3.connect(db)
         existed_df = table_from_sql(table_name=table_name, db=db)
         for idx, row in existed_df.iterrows():
             existed_hash_set.add(row['hash'])
