@@ -38,32 +38,7 @@ def check_config(config):
 
     return True
 
-# remove the depulication samples aside loop
-def remove_duplication(sample_files, dup_file = ".file_duplication.json", 
-                       duplication_dir="duplication"):
-    dup_dict = {}
-    if os.path.exists(dup_file):
-        with open(dup_file, "r") as f:
-            dup_dict = json.load(f)
 
-    for file in sample_files:
-        df = pd.read_csv(file, sep = "\t")
-        dict_key = "_".join(sorted(df['GSM'].to_list()))
-
-        if dict_key in dup_dict.keys() and \
-            os.path.basename(file) != os.path.basename(dup_dict[dict_key]):
-            if os.path.isfile(os.path.join(duplication_dir, os.path.basename(file))):
-                shutil.copy2(file, duplication_dir)
-                os.unlink(file)
-            sample_files.remove(file)
-        else:
-            dup_dict[dict_key] = file
-    
-    if len(dup_dict) > 0 :
-        with open(dup_file, "w") as f:
-            json.dump(dup_dict, f)
-
-    return sample_files
 
 def get_snakefile(root_dir = ".", file = "Snakefile"):
     sf = os.path.join(root_dir, file)
@@ -147,8 +122,7 @@ def main(root_dir, args):
     dup_file = ".file_duplication.json"
     # preprocess
     sample_files = glob.glob( os.path.join(unfinished_dir,  "*.txt") )
-    # remove duplication before running
-    sample_files = remove_duplication(sample_files, dup_file, duplication_dir)
+
     
     # select unfinished files
 
