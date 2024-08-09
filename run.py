@@ -60,8 +60,8 @@ def run_snakemake(snakefile, configfiles, cores, unlock=False):
 
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
-def process_sample_file(sample_file, metdata_dir, sf, config_file, cores, config):
-    shutil.move(sample_file, metdata_dir)
+def process_sample_file(sample_file, metadata_dir, sf, config_file, cores, config):
+    shutil.move(sample_file, metadata_dir)
     run_snakemake(sf, config_file, cores, unlock=True)
     status = run_snakemake(sf, config_file, cores)
     if status:
@@ -71,18 +71,19 @@ def process_sample_file(sample_file, metdata_dir, sf, config_file, cores, config
         if config['feishu']:
             feishu_notification(config['feishu_api'], contents)
 
-        if os.path.isfile(os.path.join(finished_dir, os.path.basename(sample_file))):
-            shutil.copy2(sample_file, finished_dir)
+        finished_sample_file = os.path.join(finished_dir, os.path.basename(sample_file))
+        if os.path.isfile(finished_sample_file):
+            shutil.copy2(sample_file, finished_sample_file)
             os.unlink(sample_file)
         else:
-            shutil.move(sample_file, finished_dir)
+            shutil.move(sample_file, finished_sample_file)
     else:
         contents = "snakemake run failed"
         if config['bark']:
             bark_notification(config['bark_api'], contents)
         if config['feishu']:
             feishu_notification(config['feishu_api'], contents)
-        shutil.move(sample_file, "unfinished")
+        shutil.move(sample_file, os.path.join("unfinished", os.path.basename(sample_file)))
 
 def main(root_dir, args):
     if len(args) < 3:
