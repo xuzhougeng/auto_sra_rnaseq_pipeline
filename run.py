@@ -5,10 +5,10 @@ import glob
 import shutil
 import pandas as pd
 import json
+import subprocess
 
 from pandas.core import base
 
-from snakemake.workflow import snakemake
 from snakemake.io import load_configfile
 
 from scripts.utilize import bark_notification, feishu_notification
@@ -48,15 +48,28 @@ def get_snakefile(root_dir = ".", file = "Snakefile"):
 
 # hard decode total download speed
 def run_snakemake(snakefile, configfiles, cores, unlock=False):
-    status = snakemake(snakefile= snakefile, 
-                      configfiles = configfiles, 
-                      cores = cores,
-                      resources= {"rx": 80, 'limit_dump': 2, 'limit_merge': 2},
-                      force_incomplete = True,
-                      latency_wait = 5,
-                      attempt = 3,
-					  unlock=unlock)
-    return status
+    cmd = [
+        "snakemake",
+        "-s", snakefile,
+        "--configfile", configfiles[0],
+        "--cores", str(cores),
+        "--resources", "rx=80", "limit_dump=2", "limit_merge=2",
+        "--force-incomplete",
+        "--latency-wait", "5",
+        "--restart-times", "3"
+    ]
+    
+    if unlock:
+        cmd.append("--unlock")
+    
+    try:
+        result = subprocess.run(cmd, check=True, capture_output=True, text=True)
+        return True
+    except subprocess.CalledProcessError as e:
+        print(f"Snakemake command failed: {e}", file=sys.stderr)
+        print(f"Stdout: {e.stdout}", file=sys.stderr)
+        print(f"Stderr: {e.stderr}", file=sys.stderr)
+        return False
 
 from concurrent.futures import ProcessPoolExecutor, as_completed
 import multiprocessing
