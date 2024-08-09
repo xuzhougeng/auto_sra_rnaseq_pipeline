@@ -69,10 +69,10 @@ def process_sample_file(sample_file, metadata_dir, sf, config_file, cores, confi
         config['metadata'] = os.path.join(metadata_dir, os.path.basename(sample_file))
         
         # Run Snakemake to unlock any potential issues
-        run_snakemake(sf, config_file, cores, unlock=True)
+        run_snakemake(sf, [config_file], cores, unlock=True)
         
         # Execute Snakemake with the provided configuration
-        status = run_snakemake(sf, config_file, cores)
+        status = run_snakemake(sf, [config_file], cores)
         
         # Check the status and handle notifications accordingly
         if status:
@@ -131,13 +131,14 @@ def main(root_dir, args):
 
     # Process tasks
     with ThreadPoolExecutor(max_workers=parallel) as executor:
-        future_to_task = {executor.submit(process_sample_file, metadata_file, metadata_dir, sf, [config_file_path], cores, config): metadata_file for metadata_file, config in task_dict.items()}
+        future_to_task = {executor.submit(process_sample_file, metadata_file, metadata_dir, sf, config_file_path, cores, config): metadata_file for metadata_file, config in task_dict.items()}
         for future in as_completed(future_to_task):
             metadata_file = future_to_task[future]
             try:
-                future.result()
+                result = future.result()
+                print(f'Task for {metadata_file} completed with result: {result}')
             except Exception as exc:
-                print(f'{metadata_file} generated an exception: {exc}')
+                print(f'Task for {metadata_file} generated an exception: {exc}')
 
 if __name__ == '__main__':
     root_dir = os.path.dirname(os.path.abspath(__file__))
