@@ -6,7 +6,6 @@ metadata: "metadata"
 srr_separator: ","
 
 # SRA download path
-sra_download_path: "sra"
 
 # notification
 ## Email
