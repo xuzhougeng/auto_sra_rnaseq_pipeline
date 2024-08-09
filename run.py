@@ -90,55 +90,43 @@ def main(root_dir, args):
         sys.exit(1)
 
     unfinished_dir = args[1]
-    config_file    = [args[2]]
+    config_file_path = args[2]
     cores = 79 if len(args) <= 3 else int(args[3])
     parallel = 10 if len(args) <= 4 else int(args[4])
-    # load config
-    config = load_configfile(config_file[0])
-    # set defualt parameter
-    if 'mail' not in config.keys():
-        config['mail'] = False
-    if 'bark' not in config.keys():
-        config['bark'] = False
-    # check_config
-    if not check_config(config):
-        sys.exit(1)
 
+    # Load base config
+    base_config = load_configfile(config_file_path)
+
+    # Prepare directories
     finished_dir = "finished"
     duplication_dir = "duplication"
-    metdata_dir = "metadata"
-    
+    metadata_dir = "metadata"
+    for dir_path in [finished_dir, duplication_dir, metadata_dir]:
+        if not os.path.exists(dir_path):
+            os.makedirs(dir_path)
 
-    if not os.path.exists(metdata_dir):
-        os.makedirs(metdata_dir)
-    # finished dir
-    if not os.path.exists(finished_dir):
-        os.makedirs(finished_dir)
-    # duplication metadir
-    if not os.path.exists(duplication_dir):
-        os.makedirs(duplication_dir)
-    
-    
-    dup_file = ".file_duplication.json"
-    # preprocess
-    sample_files = glob.glob( os.path.join(unfinished_dir,  "*.txt") )
+    # Get metadata files
+    metadata_files = glob.glob(os.path.join(unfinished_dir, "*.txt"))
 
-    
-    # select unfinished files
+    # Define task dictionary
+    task_dict = {}
+    for metadata_file in metadata_files:
+        config = base_config.copy()
+        config['metadata'] = metadata_file
+        task_dict[os.path.basename(metadata_file)] = config
 
-    
+    # Get Snakefile path
     sf = get_snakefile(root_dir, args[5] if len(args) > 5 else "Snakefile")
-    
-    #todo_files = []
 
+    # Process tasks
     with ThreadPoolExecutor(max_workers=parallel) as executor:
-        future_to_sample = {executor.submit(process_sample_file, sample_file, metdata_dir, sf, config_file, cores, config): sample_file for sample_file in sample_files}
-        for future in as_completed(future_to_sample):
-            sample_file = future_to_sample[future]
+        future_to_task = {executor.submit(process_sample_file, metadata_file, metadata_dir, sf, [config_file_path], cores, config): metadata_file for metadata_file, config in task_dict.items()}
+        for future in as_completed(future_to_task):
+            metadata_file = future_to_task[future]
             try:
                 future.result()
             except Exception as exc:
-                print(f'{sample_file} generated an exception: {exc}')
+                print(f'{metadata_file} generated an exception: {exc}')
 
 if __name__ == '__main__':
     root_dir = os.path.dirname(os.path.abspath(__file__))
