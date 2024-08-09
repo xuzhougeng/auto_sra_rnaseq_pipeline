@@ -4,7 +4,7 @@ import glob
 import shutil
 import subprocess
 
-from snakemake.io import load_configfile
+import yaml
 
 from scripts.utilize import bark_notification, feishu_notification
 
@@ -140,7 +140,8 @@ def main(root_dir, args):
     print(f"Snakefile: {args[5] if len(args) > 5 else 'Default'}")
 
     # Load base config
-    base_config = load_configfile(config_file_path)
+    with open(config_file_path, 'r') as config_file:
+        base_config = yaml.safe_load(config_file)
 
     # Prepare directories
     finished_dir = "finished"
