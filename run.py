@@ -85,6 +85,7 @@ def process_sample_file(sample_file, metdata_dir, sf, config_file, cores, config
         shutil.move(sample_file, "unfinished")
 
 def main(root_dir, args):
+    import yaml
     if len(args) < 3:
         print("python run.py unfinished config.yaml cores")
         sys.exit(1)
@@ -121,24 +122,53 @@ def main(root_dir, args):
     
     dup_file = ".file_duplication.json"
     # preprocess
-    sample_files = glob.glob( os.path.join(unfinished_dir,  "*.txt") )
-
-    
-    # select unfinished files
-
-    
+    metadata_files = glob.glob(os.path.join(unfinished_dir, "*.txt"))
     sf = get_snakefile(root_dir, args[5] if len(args) > 5 else "Snakefile")
-    
-    #todo_files = []
+
+    # Read the base config from config.yaml
+    with open(config_file[0], 'r') as stream:
+        base_config = yaml.safe_load(stream)
+
+    task_dict = {}
+    for metadata_file in metadata_files:
+        task_name = os.path.basename(metadata_file)
+        task_config = base_config.copy()
+        task_config['metadata'] = metadata_file
+        task_dict[task_name] = task_config
+
+    def submit_task(task_name, task_config):
+        config_path = os.path.join(metdata_dir, f"{task_name}_config.yaml")
+        with open(config_path, 'w') as config_out:
+            yaml.dump(task_config, config_out)
+        run_snakemake(sf, [config_path], cores, unlock=True)
+        status = run_snakemake(sf, [config_path], cores)
+        if status:
+            contents = "snakemake run successfully"
+            if config['bark']:
+                bark_notification(config['bark_api'], contents)
+            if config['feishu']:
+                feishu_notification(config['feishu_api'], contents)
+            if os.path.isfile(os.path.join(finished_dir, task_name)):
+                shutil.copy2(metadata_file, finished_dir)
+                os.unlink(metadata_file)
+            else:
+                shutil.move(metadata_file, finished_dir)
+        else:
+            contents = "snakemake run failed"
+            if config['bark']:
+                bark_notification(config['bark_api'], contents)
+            if config['feishu']:
+                feishu_notification(config['feishu_api'], contents)
+            shutil.move(metadata_file, "unfinished")
 
     with ThreadPoolExecutor(max_workers=parallel) as executor:
-        future_to_sample = {executor.submit(process_sample_file, sample_file, metdata_dir, sf, config_file, cores, config): sample_file for sample_file in sample_files}
-        for future in as_completed(future_to_sample):
-            sample_file = future_to_sample[future]
+        future_to_task = {executor.submit(submit_task, task_name, task_config): task_name for task_name, task_config in task_dict.items()}
+        for future in as_completed(future_to_task):
+            task_name = future_to_task[future]
             try:
                 future.result()
             except Exception as exc:
-                print(f'{sample_file} generated an exception: {exc}')
+                print(f'{task_name} generated an exception: {exc}')
 
 if __name__ == '__main__':
     root_dir = os.path.dirname(os.path.abspath(__file__))
