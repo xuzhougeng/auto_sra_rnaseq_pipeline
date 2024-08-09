@@ -68,14 +68,12 @@ def run_snakemake(snakefile, configfiles, cores, unlock=False):
 from concurrent.futures import ProcessPoolExecutor, as_completed
 import multiprocessing
 
-def process_sample_file(args):
-    sample_file, metadata_dir, sf, config_file, cores, config = args
+def process_config(args):
+    config_file, sf, cores = args
     try:
-        # Ensure the sample file is moved to the metadata directory
-        shutil.move(sample_file, os.path.join(metadata_dir, os.path.basename(sample_file)))
-        
-        # Update the config with the new metadata file path
-        config['metadata'] = os.path.join(metadata_dir, os.path.basename(sample_file))
+        # Load the config
+        with open(config_file, 'r') as f:
+            config = yaml.safe_load(f)
         
         # Run Snakemake to unlock any potential issues
         run_snakemake(sf, [config_file], cores, unlock=True)
@@ -85,12 +83,9 @@ def process_sample_file(args):
         
         # Check the status and handle notifications accordingly
         if status:
-            contents = f"Snakemake run successfully for {os.path.basename(sample_file)}"
-            finished_sample_file = os.path.join("finished", os.path.basename(sample_file))
-            shutil.move(config['metadata'], finished_sample_file)
+            contents = f"Snakemake run successfully for {config_file}"
         else:
-            contents = f"Snakemake run failed for {os.path.basename(sample_file)}"
-            shutil.move(config['metadata'], os.path.join("unfinished", os.path.basename(sample_file)))
+            contents = f"Snakemake run failed for {config_file}"
         
         # Send notifications
         if config.get('bark'):
@@ -100,7 +95,7 @@ def process_sample_file(args):
         
         return contents
     except Exception as e:
-        error_message = f"Error processing {os.path.basename(sample_file)}: {str(e)}"
+        error_message = f"Error processing {config_file}: {str(e)}"
         print(error_message, file=sys.stderr)
         return error_message
 
