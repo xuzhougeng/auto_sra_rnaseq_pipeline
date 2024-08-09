@@ -83,7 +83,32 @@ def run_snakemake(snakefile, configfiles, cores, unlock=False):
 					  unlock=unlock)
     return status
 
-# 
+from concurrent.futures import ThreadPoolExecutor, as_completed
+
+def process_sample_file(sample_file, metdata_dir, sf, config_file, cores, config):
+    shutil.move(sample_file, metdata_dir)
+    run_snakemake(sf, config_file, cores, unlock=True)
+    status = run_snakemake(sf, config_file, cores)
+    if status:
+        contents = "snakemake run successfully"
+        if config['bark']:
+            bark_notification(config['bark_api'], contents)
+        if config['feishu']:
+            feishu_notification(config['feishu_api'], contents)
+        update_status(sample_file, table_name="meta", db=db)
+        if os.path.isfile(os.path.join(finished_dir, os.path.basename(sample_file))):
+            shutil.copy2(sample_file, finished_dir)
+            os.unlink(sample_file)
+        else:
+            shutil.move(sample_file, finished_dir)
+    else:
+        contents = "snakemake run failed"
+        if config['bark']:
+            bark_notification(config['bark_api'], contents)
+        if config['feishu']:
+            feishu_notification(config['feishu_api'], contents)
+        shutil.move(sample_file, "unfinished")
+
 def main(root_dir, args):
     if len(args) < 3:
         print("python run.py unfinished config.yaml cores")
@@ -150,43 +175,14 @@ def main(root_dir, args):
     
     #todo_files = []
 
-    while len(sample_files) > 0 :
-        for i in range(min(parallel, len(sample_files))):
-            file = sample_files.pop()
-            shutil.move(file, metdata_dir)
-            #todo_files.append(os.path.join( metdata_dir ,os.path.basename(file))  )
-
-        run_snakemake(sf, config_file, cores, unlock=True )
-        status = run_snakemake(sf, config_file, cores )
-        # move the finished file to finished
-
-        if status:
-            contents="snakemake run successfully"
-            if config['bark']:
-                bark_notification(config['bark_api'], contents)
-            if config['feishu']:
-                feishu_notification(config['feishu_api'], contents)
-            finished_file = glob.glob( os.path.join(metdata_dir,  "*.txt") )
-            for _ in range(len(finished_file)):
-                file = finished_file.pop()
-                update_status(file, table_name="meta", db = db)
-                
-                if os.path.isfile(os.path.join(finished_dir, os.path.basename(file))):
-                   shutil.copy2(file, finished_dir)
-                   os.unlink(file)
-                else:
-                    shutil.move(file, finished_dir)
-        else:
-            contents = "snakemake run failed"
-            if config['bark']:
-                bark_notification(config['bark_api'], contents)
-            if config['feishu']:
-                feishu_notification(config['feishu_api'], contents)  
-            broken_file = glob.glob( os.path.join(metdata_dir,  "*.txt") )         
-            for _ in range(len(broken_file)):
-                file = broken_file.pop()
-                shutil.move(file, "unfinished")
-            #sys.exit(1)
+    with ThreadPoolExecutor(max_workers=parallel) as executor:
+        future_to_sample = {executor.submit(process_sample_file, sample_file, metdata_dir, sf, config_file, cores, config): sample_file for sample_file in sample_files}
+        for future in as_completed(future_to_sample):
+            sample_file = future_to_sample[future]
+            try:
+                future.result()
+            except Exception as exc:
+                print(f'{sample_file} generated an exception: {exc}')
 
 if __name__ == '__main__':
     root_dir = os.path.dirname(os.path.abspath(__file__))
