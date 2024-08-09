@@ -13,7 +13,7 @@ from snakemake.io import load_configfile
 
 from scripts.utilize import bark_notification, feishu_notification
 from scripts.utilize import build_metadata_table, build_sample_table
-from scripts.utilize import table_to_sql, table_from_sql, update_status
+
 
 # check config
 def check_config(config):
@@ -95,7 +95,7 @@ def process_sample_file(sample_file, metdata_dir, sf, config_file, cores, config
             bark_notification(config['bark_api'], contents)
         if config['feishu']:
             feishu_notification(config['feishu_api'], contents)
-        update_status(sample_file, table_name="meta", db=db)
+
         if os.path.isfile(os.path.join(finished_dir, os.path.basename(sample_file))):
             shutil.copy2(sample_file, finished_dir)
             os.unlink(sample_file)
@@ -151,25 +151,7 @@ def main(root_dir, args):
     sample_files = remove_duplication(sample_files, dup_file, duplication_dir)
     
     # select unfinished files
-    db = "meta_info.sqlite3"
-    if not os.path.exists(db):
-        # create database if not exists 
-        df = build_metadata_table(sample_files)
-        df2 = build_sample_table(df, unfinished_dir)
-        table_to_sql(df, table_name="meta", db=db)
-        table_to_sql(df2, table_name="sample", db=db)
-    else:
-        # otherwise, upgrade the db
-        df = build_metadata_table(sample_files, table_name="meta", db=db)
-        if df.shape[0] > 0 and df.shape[1] > 0:
-            table_to_sql(df, table_name="meta", db=db)
-            df2 = build_sample_table(df, unfinished_dir)
-            table_to_sql(df2, table_name="sample", db=db)
 
-    # get the unfinished meta files
-    df = table_from_sql( table_name = "meta", db = db )
-    sample_files = df.loc[df['status'] == 0, 'meta_file'].to_list()
-    sample_files = [os.path.join(unfinished_dir, f) for f in sample_files ]
     
     sf = get_snakefile(root_dir, args[5] if len(args) > 5 else "Snakefile")
     
