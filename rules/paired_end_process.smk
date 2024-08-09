@@ -1,5 +1,5 @@
 def get_merged_input_data_R1(wildcards):
-    df = sample_df
+    df = metadata_df
     sample = wildcards.sample
     separator = config.get('srr_separator', ',')
 
@@ -9,7 +9,7 @@ def get_merged_input_data_R1(wildcards):
     return [ "sra/{x}_1.fastq".format(x=x) for x in SRR_ID ]
 
 def get_merged_input_data_R2(wildcards):
-    df = sample_df
+    df = metadata_df
     sample = wildcards.sample
     separator = config.get('srr_separator', ',')
 
