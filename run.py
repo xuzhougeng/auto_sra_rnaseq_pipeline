@@ -92,9 +92,6 @@ def process_sample_file(sample_file, metadata_dir, sf, config_file, cores, confi
         if config['feishu']:
             feishu_notification(config['feishu_api'], contents)
         shutil.move(sample_file, os.path.join("unfinished", os.path.basename(sample_file)))
-            os.unlink(sample_file)
-        else:
-            shutil.move(sample_file, finished_sample_file)
     else:
         contents = "snakemake run failed"
         if config['bark']:
