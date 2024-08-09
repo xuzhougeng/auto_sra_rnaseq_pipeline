@@ -109,7 +109,12 @@ def main(root_dir, args):
     Example: python run.py unfinished config.yaml 40 5
     """
 
+    if len(args) < 2 or args[1] in ['-h', '--help']:
+        print(usage)
+        sys.exit(0)
+
     if len(args) < 3:
+        print("Error: Not enough arguments.")
         print(usage)
         sys.exit(1)
 
@@ -117,6 +122,13 @@ def main(root_dir, args):
     config_file_path = args[2]
     cores = 79 if len(args) <= 3 else int(args[3])
     parallel = 10 if len(args) <= 4 else int(args[4])
+
+    print(f"Running with the following parameters:")
+    print(f"Unfinished directory: {unfinished_dir}")
+    print(f"Config file: {config_file_path}")
+    print(f"Cores: {cores}")
+    print(f"Parallel tasks: {parallel}")
+    print(f"Snakefile: {args[5] if len(args) > 5 else 'Default'}")
 
     # Load base config
     base_config = load_configfile(config_file_path)
