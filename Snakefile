@@ -35,62 +35,10 @@ def send_mail(subject, content,
     finally:
         client.quit()
 
-# define hash function
-def myhash(string, size=8):
-    hash_value = hash(string)
-    return abs(hash_value) % (10 ** size)
-
-# get the input data of R1 and R2 or single
-# get input GSM data
-def get_input_data(wildcards):
-    
-    df = sample_df
-    sample = wildcards.sample
-    paired = df.loc[df['GSM'] == sample, 'paired'].tolist()[0]  == "PAIRED"
-    if paired:
-        return [ os.path.join("01_clean_data", sample + '_R1.fq.gz'), 
-        os.path.join("01_clean_data",sample + '_R2.fq.gz')]
-    else:
-        return [  os.path.join("01_clean_data", sample + '.fq.gz') ]
-
-# get metadata
-def get_sample_info(accession):
-    df = sample_df.loc[ sample_df['accession'].isin([accession]), ]
-    df['condition'] = df['group'].map({'control': 'control', 'treat': 'treatment'})
-    return  df
-
-# get GSM ID
-def get_counts_file(wildcards):
-
-    number  = wildcards.number
-    GSE_ID = wildcards.GSE_ID
-    gene   = wildcards.gene
-    accession = "{}_{}_{}".format(GSE_ID, gene, number)
-    df = get_sample_info(accession)
-
-    samples =  df['GSM'].to_list()
-    count_files = ["02_read_align/{sample}_ReadsPerGene.out.tab".format(sample=sample) for sample in samples]
-    return  count_files
-
-# get the count and meta
-def get_counts_and_meta(wildcards):
-    number  = wildcards.number
-    GSE_ID = wildcards.GSE_ID
-    gene   = wildcards.gene
-    accession = "{}_{}_{}".format(GSE_ID, gene, number)
-
-    counts_file = metadata_df.loc[metadata_df['accession'].isin([accession]), 'count_file'].to_list()[0]
-    meta_file = metadata_df.loc[metadata_df['accession'].isin([accession]), 'meta_file'].to_list()[0]
-    meta_file = join(metadata_dir, meta_file)
-
-    return [counts_file, meta_file]
-
-
 
 # get the scripts dir
 
 configfile: "config.yaml"
-
 
 root_dir = os.path.dirname(os.path.abspath(workflow.snakefile))
 script_dir = os.path.join(root_dir, "scripts")
@@ -98,63 +46,41 @@ if not os.path.exists(script_dir):
     sys.exit("Unable to locate the Snakemake workflow file;  tried %s" %script_dir)
 
 
-# get metadata file directory
-metadata = config['metadata']
+# filename of metadata is DB_ID
+# column of metadata_file is 'GSE     GSM     gene    method  celline group   group_name      type    platform        SRR     paired'
+# separated by '\t'
+metadata_file = config['metadata']
+metadata_df = pd.read_csv(metadata_file, sep = "\t")
+DB_ID = os.path.basename(file).replace(".txt", "")
 
-file_dict = {}
-# file_dict.json:  key为GSE号的排序后组合, value为count+原始文件名
-# 每次处理新的文件的时候, 通过对key的查找，可以用来确定该文件是否已经处理过
-
-if os.path.exists("file_dict.json"):
-    with open("file_dict.json", "r") as f:
-        file_dict = json.load(f)
-
-
-# 新的文件
-
-sra_files = []      # 记录SRA的文件命
-counts_file = []    # 记录输出的tsv文件名
-deseq_file =  []    # 记录着输出的差异表达的Rds名字
-metadata_dict = {}  # 字典, key为tsv文件名, value为对应的DataFrame
-
-sample_files = glob.glob( os.path.join(metadata,  "*.txt") )
-hash_set = set()
-for file in sample_files:
-    df = pd.read_csv(file, sep = "\t")
-    dict_key = "_".join(sorted(df['GSM'].to_list()))
-    hash_value = myhash(dict_key)
-    # avoid hash collision
-    while (hash_value in hash_set):
-        hash_value += 1
-    hash_set.add(hash_value)
-
-    file_dict[dict_key] = file 
-    
-    GSE_ID = np.unique(df['GSE'])[0]
-    gene   = np.unique(df['gene'])[0]
-    file_name = "03_merged_counts/{}_{}_{}.tsv".format(GSE_ID, gene, hash_value)
-    deseq_name = "05_DGE_analysis/{}_{}_{}.Rds".format(GSE_ID, gene, hash_value)
-    for sra_id in df['SRR'].to_list():
-        sra_files.append("sra/{sra}/{sra}.sra".format(sra=sra_id))
-   
-    counts_file.append(file_name)
-    deseq_file.append(deseq_name)
-    metadata_dict["{}_{}_{}".format(GSE_ID, gene, hash_value)] = df
-
-
-# 记录所有元信息, 用于后续查询
-# 如果counts_file 没有内容，则直接退出
-if len(counts_file) > 0:
-    metadata_df = pd.concat(metadata_dict.values(), ignore_index=True)
-    rep_len = list(map(len, metadata_dict.values()))
-    metadata_df['key'] = np.repeat(list(metadata_dict.keys()), rep_len )
+# 输入文件
+paired = df.loc[df['GSM'] == sample, 'paired'].tolist()[0]  == "PAIRED"
+if paired:
+    fastq_input = [ os.path.join("01_clean_data", sample + '_R1.fq.gz'), 
+    os.path.join("01_clean_data",sample + '_R2.fq.gz')]
 else:
-    print("no job to do")
-    os._exit(0)
+    fastq_input = [  os.path.join("01_clean_data", sample + '.fq.gz') ]
 
 
-samples =  metadata_df['GSM'].to_list()
-bigwig_files = expand('04_bigwig/{sample}.bw', sample = samples)
+# 中间文件: SRA的文件名
+sra_files = []      
+for sra_id in metadata_df['SRR'].to_list():
+    sra_files.append("sra/{sra}/{sra}.sra".format(sra=sra_id))
+
+# 中间文件: 记录COUNT_FILE
+count_files = []
+for sample in metadata_df['GSM'].to_list():
+    count_files.append("02_read_align/{sample}_ReadsPerGene.out.tab".format(sample=sample))
+
+# 中间文件: 记录bigwig的文件名
+bigwig_files = []
+for sample in metadata_df['GSM'].to_list():
+    bigwig_files.append("04_bigwig/{sample}.bw".format(sample=sample))
+
+
+# 输出文件: counts_file和deseq_file
+expr_matrix_file = f"03_merged_counts/{DB_ID}.tsv"
+deseq_file  = f"05_DGE_analysis/{DB_ID}.Rds"
 
 
 
@@ -162,8 +88,9 @@ localrules: all, data_downloader
 rule all:
     input:
         deseq_file,
-        counts_file,
-        bigwig_files
+        expr_matrix_file,
+        bigwig_files,
+        count_files
         
 rule download:
     input:
@@ -203,7 +130,7 @@ include: "rules/paired_end_process.smk" # pair end
 # alignment
 rule align_and_count:
     input:
-        get_input_data
+        fastq_input
     wildcard_constraints:
         sample="[A-Za-z0-9]+"
     params:
@@ -236,6 +163,7 @@ rule align_and_count:
         --outTmpKeep None && \
         mv 02_read_align/{params.prefix}_Log.final.out {log}
     """
+
 rule build_bam_index:
     input: "02_read_align/{sample}_Aligned.sortedByCoord.out.bam"
     priority: 40
@@ -267,8 +195,8 @@ rule bamtobw:
     """
 
 rule combine_count:
-    input: get_counts_file
-    output: "03_merged_counts/{GSE_ID}_{gene}_{number}.tsv"
+    input: count_files
+    output: "03_merged_counts/{DB_ID}.tsv"
     priority: 35
     run:
         #if not os.path.exists("03_merged_counts"):
@@ -289,8 +217,9 @@ rule combine_count:
 
 rule DGE_analysis:
     input: 
-        get_counts_and_meta
-    output: "05_DGE_analysis/{GSE_ID}_{gene}_{number}.Rds"
+        expr_matrix_file,
+        metadata_file
+    output: "05_DGE_analysis/{DB_ID}.Rds"
     priority: 35
     params:
         script_dir = script_dir,
