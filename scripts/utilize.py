@@ -29,6 +29,8 @@ def main():
 if __name__ == "__main__":
     main()
 
+pd.set_option("display.max_columns", None)
+
 
 
 # define hash function
