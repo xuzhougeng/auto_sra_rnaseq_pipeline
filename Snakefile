@@ -6,11 +6,9 @@ import pandas as pd
 import numpy as np
 from os.path import basename, join
 from collections import deque
-from scripts.utilize import table_from_sql
-
 #print(workflow.scheduler_type, file = sys.stderr)
 
-# Auxiliary function
+# Auxiliary functions
 
 def send_mail(subject, content, 
               sender, sender_passwd, 
@@ -167,33 +165,40 @@ if not os.path.exists(script_dir):
 # get metadata file directory
 metadata_dir = config['metadata']
 
-# retrieve the data from database
-db = "meta_info.sqlite3"
+sample_files = glob.glob(os.path.join(metadata_dir, "*.txt"))
+sample_file_names = [basename(f) for f in sample_files]
 
-sample_files = glob.glob( os.path.join(metadata_dir,  "*.txt") )
-sample_file_names = [ basename(f) for f in sample_files ]
+metadata_dict = {}
+counts_file = []
+deseq_file = []
 
-metadata_df = table_from_sql(table_name = "meta", db=db)
-metadata_df = metadata_df.loc[metadata_df['meta_file'].isin(sample_file_names), ]
+for file in sample_files:
+    df = pd.read_csv(file, sep="\t")
+    dict_key = "_".join(sorted(df['GSM'].to_list()))
+    hash_value = myhash(dict_key)
+    
+    GSE_ID = np.unique(df['GSE'])[0]
+    gene = np.unique(df['gene'])[0]
+    
+    file_name = f"03_merged_counts/{GSE_ID}_{gene}_{hash_value}.tsv"
+    deseq_name = f"05_DGE_analysis/{GSE_ID}_{gene}_{hash_value}.Rds"
+    
+    counts_file.append(file_name)
+    deseq_file.append(deseq_name)
+    metadata_dict[f"{GSE_ID}_{gene}_{hash_value}"] = df
 
-accessions = metadata_df['accession']
-counts_file = metadata_df['count_file']
-deseq_file  = metadata_df['deseq_file']
-
-# 记录所有的元信息, 用于后续查询
-sample_df = table_from_sql(table_name = "sample", db=db)
-sample_df = sample_df.loc[sample_df['accession'].isin(accessions), ]
-
-
-# 如果counts_file 没有内容，则直接退出
-if len(counts_file) < 0:
+# 记录所有元信息, 用于后续查询
+if len(counts_file) > 0:
+    metadata_df = pd.concat(metadata_dict.values(), ignore_index=True)
+    rep_len = list(map(len, metadata_dict.values()))
+    metadata_df['key'] = np.repeat(list(metadata_dict.keys()), rep_len)
+    sample_df = metadata_df
+else:
     print("no job to do")
     os._exit(0)
 
-
-# bigwig file list
-samples =  sample_df['GSM'].to_list()
-bigwig_files = expand('04_bigwig/{sample}.bw', sample = samples)
+samples = metadata_df['GSM'].to_list()
+bigwig_files = expand('04_bigwig/{sample}.bw', sample=samples)
 
 
 localrules: all, data_downloader
