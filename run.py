@@ -8,7 +8,7 @@ import json
 
 from pandas.core import base
 
-from snakemake import snakemake
+from snakemake.workflow import snakemake
 from snakemake.io import load_configfile
 
 from scripts.utilize import bark_notification, feishu_notification
