@@ -48,7 +48,7 @@ def run_snakemake(snakefile, configfiles, cores, unlock=False):
         "--configfile", configfiles[0],
         "--cores", str(cores),
         "--resources", "rx=80", "limit_dump=2", "limit_merge=2",
-        "--force-incomplete",
+        "--rerun-incomplete",
         "--latency-wait", "5",
         "--restart-times", "3"
     ]
