@@ -147,7 +147,8 @@ def main(root_dir, args):
     finished_dir = "finished"
     duplication_dir = "duplication"
     metadata_dir = "metadata"
-    for dir_path in [finished_dir, duplication_dir, metadata_dir]:
+    temp_config_dir = "temp_configs"
+    for dir_path in [finished_dir, duplication_dir, metadata_dir, temp_config_dir]:
         if not os.path.exists(dir_path):
             os.makedirs(dir_path)
 
@@ -159,14 +160,20 @@ def main(root_dir, args):
     for metadata_file in metadata_files:
         config = base_config.copy()
         config['metadata'] = metadata_file
-        task_dict[os.path.basename(metadata_file)] = config
+        
+        # Create temporary YAML file
+        temp_config_file = os.path.join(temp_config_dir, f"{os.path.basename(metadata_file)}.yaml")
+        with open(temp_config_file, 'w') as temp_file:
+            yaml.dump(config, temp_file)
+        
+        task_dict[os.path.basename(metadata_file)] = temp_config_file
 
     # Get Snakefile path
     sf = get_snakefile(root_dir, args[5] if len(args) > 5 else "Snakefile")
 
     # Process tasks
     with ProcessPoolExecutor(max_workers=parallel) as executor:
-        tasks = [(metadata_file, metadata_dir, sf, config_file_path, cores, config) for metadata_file, config in task_dict.items()]
+        tasks = [(metadata_file, metadata_dir, sf, temp_config_file, cores) for metadata_file, temp_config_file in task_dict.items()]
         future_to_task = {executor.submit(process_sample_file, task): task[0] for task in tasks}
         for future in as_completed(future_to_task):
             metadata_file = future_to_task[future]
@@ -175,6 +182,9 @@ def main(root_dir, args):
                 print(f'Task for {metadata_file} completed with result: {result}')
             except Exception as exc:
                 print(f'Task for {metadata_file} generated an exception: {exc}')
+
+    # Clean up temporary config files
+    shutil.rmtree(temp_config_dir)
 
 if __name__ == '__main__':
     root_dir = os.path.dirname(os.path.abspath(__file__))
