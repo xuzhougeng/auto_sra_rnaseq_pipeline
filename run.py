@@ -3,12 +3,10 @@ import sys
 import glob
 import shutil
 import subprocess
-import time
 
 import yaml
 
 from scripts.utilize import bark_notification, feishu_notification
-from concurrent.futures import ThreadPoolExecutor, TimeoutError
 
 
 # check config
@@ -58,27 +56,14 @@ def run_snakemake(snakefile, configfiles, cores, unlock=False):
     if unlock:
         cmd.append("--unlock")
     
-    process = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
-    
-    def run_process():
-        stdout, stderr = process.communicate()
-        return process.returncode, stdout, stderr
-    
-    with ThreadPoolExecutor() as executor:
-        future = executor.submit(run_process)
-        try:
-            returncode, stdout, stderr = future.result(timeout=3600)  # 1 hour timeout
-            if returncode == 0:
-                return True
-            else:
-                print(f"Snakemake command failed with return code {returncode}", file=sys.stderr)
-                print(f"Stdout: {stdout}", file=sys.stderr)
-                print(f"Stderr: {stderr}", file=sys.stderr)
-                return False
-        except TimeoutError:
-            process.kill()
-            print("Snakemake execution timed out after 1 hour", file=sys.stderr)
-            return False
+    try:
+        result = subprocess.run(cmd, check=True, capture_output=True, text=True)
+        return True
+    except subprocess.CalledProcessError as e:
+        print(f"Snakemake command failed: {e}", file=sys.stderr)
+        print(f"Stdout: {e.stdout}", file=sys.stderr)
+        print(f"Stderr: {e.stderr}", file=sys.stderr)
+        return False
 
 from concurrent.futures import ProcessPoolExecutor, as_completed
 import multiprocessing
@@ -90,9 +75,7 @@ def process_sample_file(args):
         run_snakemake(sf, [config_file], cores, unlock=True)
         
         # Execute Snakemake with the provided configuration
-        start_time = time.time()
         status = run_snakemake(sf, [config_file], cores)
-        end_time = time.time()
         
         # Load the config to access notification settings
         with open(config_file, 'r') as f:
@@ -104,10 +87,7 @@ def process_sample_file(args):
             # Move the metadata file to finished directory
             shutil.move(os.path.join(metadata_dir, metadata_file), os.path.join("finished", metadata_file))
         else:
-            if end_time - start_time >= 3600:
-                contents = f"Snakemake run timed out after 1 hour for {metadata_file}"
-            else:
-                contents = f"Snakemake run failed for {metadata_file}"
+            contents = f"Snakemake run failed for {metadata_file}"
         
         # Send notifications
         if config.get('bark'):
