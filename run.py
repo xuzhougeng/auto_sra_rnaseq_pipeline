@@ -41,7 +41,7 @@ def get_snakefile(root_dir = ".", file = "Snakefile"):
     return sf
 
 # hard decode total download speed
-def run_snakemake(snakefile, configfiles, cores, unlock=False):
+def run_snakemake(snakefile, configfiles, cores, unlock=False, timeout=3600):
     cmd = [
         "snakemake",
         "-s", snakefile,
@@ -57,12 +57,15 @@ def run_snakemake(snakefile, configfiles, cores, unlock=False):
         cmd.append("--unlock")
     
     try:
-        result = subprocess.run(cmd, check=True, capture_output=True, text=True)
+        result = subprocess.run(cmd, check=True, capture_output=True, text=True, timeout=timeout)
         return True
     except subprocess.CalledProcessError as e:
         print(f"Snakemake command failed: {e}", file=sys.stderr)
         print(f"Stdout: {e.stdout}", file=sys.stderr)
         print(f"Stderr: {e.stderr}", file=sys.stderr)
+        return False
+    except subprocess.TimeoutExpired:
+        print(f"Snakemake command timed out after {timeout} seconds", file=sys.stderr)
         return False
 
 from concurrent.futures import ProcessPoolExecutor, as_completed
@@ -72,10 +75,10 @@ def process_sample_file(args):
     metadata_file, metadata_dir, sf, config_file, cores = args
     try:
         # Run Snakemake to unlock any potential issues
-        run_snakemake(sf, [config_file], cores, unlock=True)
+        run_snakemake(sf, [config_file], cores, unlock=True, timeout=3600)
         
         # Execute Snakemake with the provided configuration
-        status = run_snakemake(sf, [config_file], cores)
+        status = run_snakemake(sf, [config_file], cores, timeout=3600)
         
         # Load the config to access notification settings
         with open(config_file, 'r') as f:
@@ -87,7 +90,7 @@ def process_sample_file(args):
             # Move the metadata file to finished directory
             shutil.move(os.path.join(metadata_dir, metadata_file), os.path.join("finished", metadata_file))
         else:
-            contents = f"Snakemake run failed for {metadata_file}"
+            contents = f"Snakemake run failed or timed out for {metadata_file}"
         
         # Send notifications
         if config.get('bark'):
