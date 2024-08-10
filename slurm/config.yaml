@@ -1,0 +1,14 @@
+executor: slurm
+jobs: 100
+default-resources:
+  - mem_mb=2000
+set-threads:
+  - data_downloader=2
+  - align_and_count=20
+  - combine_count=1
+  - DGE_analysis=1
+  - bamtobw=10
+set-resources:
+  - align_and_count=:mem_mb=20000
+  - combine_count=:mem_mb=20000
+  - DGE_analysis=:mem_mb=20000
