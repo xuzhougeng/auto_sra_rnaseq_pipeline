@@ -2,6 +2,4 @@ channels:
   - conda-forge
   - bioconda
 dependencies:
-  - samtools
-  - star=2.7.1a
-  - deeptools
+  - sra-tools=3.1.1

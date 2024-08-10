@@ -1,4 +1,4 @@
 channels:
   - bioconda
 dependencies:
-  - sra-tools=2.10.9
+  - sra-tools=3.1.1
