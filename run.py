@@ -42,7 +42,7 @@ def get_snakefile(root_dir = ".", file = "Snakefile"):
     return sf
 
 # hard decode total download speed
-def run_snakemake(snakefile, configfiles, cores, unlock=False, timeout=3600, slurm=False):
+def run_snakemake(snakefile, configfiles, cores, unlock=False, timeout=3600, executor=None, executor_profile_path=None):
     cmd = [
         "snakemake",
         "-s", snakefile,
@@ -57,9 +57,11 @@ def run_snakemake(snakefile, configfiles, cores, unlock=False, timeout=3600, slu
     if unlock:
         cmd.append("--unlock")
     
-    if slurm:
-        cmd.extend(["--slurm", "--profile", "./slurm"])
-    
+    if executor:
+        cmd.extend(["--executor", executor])
+        if executor_profile_path:
+            cmd.extend(["--profile", executor_profile_path])
+
     try:
         result = subprocess.run(cmd, check=True, capture_output=True, text=True, timeout=timeout)
         return True
@@ -75,28 +77,20 @@ def run_snakemake(snakefile, configfiles, cores, unlock=False, timeout=3600, slu
 from concurrent.futures import ProcessPoolExecutor, as_completed
 import multiprocessing
 
-def process_sample_file(args):
-    metadata_file, metadata_dir, sf, config_file, cores, slurm = args
+def process_sample_file(metadata_file, metadata_dir, sf, config_file, cores, slurm, executor, executor_profile_path):
     try:
-        # Run Snakemake to unlock any potential issues
-        run_snakemake(sf, [config_file], cores, unlock=True, timeout=3600, slurm=slurm)
-        
-        # Execute Snakemake with the provided configuration
-        status = run_snakemake(sf, [config_file], cores, timeout=3600, slurm=slurm)
-        
-        # Load the config to access notification settings
+        run_snakemake(sf, [config_file], cores, unlock=True, timeout=3600, slurm=slurm, executor=executor, executor_profile_path=executor_profile_path)
+        status = run_snakemake(sf, [config_file], cores, timeout=3600, slurm=slurm, executor=executor, executor_profile_path=executor_profile_path)
+
         with open(config_file, 'r') as f:
             config = yaml.safe_load(f)
         
-        # Check the status and handle notifications accordingly
         if status:
             contents = f"Snakemake run successfully for {metadata_file}"
-            # Move the metadata file to finished directory
             shutil.move(os.path.join(metadata_dir, metadata_file), os.path.join("finished", metadata_file))
         else:
             contents = f"Snakemake run failed or timed out for {metadata_file}"
-        
-        # Send notifications
+
         if config.get('bark'):
             bark_notification(config['bark_api'], contents)
         if config.get('feishu'):
@@ -108,77 +102,60 @@ def process_sample_file(args):
         print(error_message, file=sys.stderr)
         return error_message
 
-def main(root_dir, args):
-    usage = """
-    Usage: python run.py <unfinished_dir> <config.yaml> [cores] [parallel] [Snakefile]
-    
-    Arguments:
-    unfinished_dir   : Directory containing unfinished metadata files
-    config.yaml      : Path to the configuration file
-    cores            : Number of cores to use (default: 79)
-    parallel         : Number of parallel tasks (default: 10)
-    Snakefile        : Path to custom Snakefile (default: 'Snakefile' in root directory)
-    
-    Example: python run.py unfinished config.yaml 40 5
-    """
+def main():
+    parser = argparse.ArgumentParser(description="Process Snakemake metadata files.")
+    parser.add_argument('unfinished_dir', help="Directory containing unfinished metadata files")
+    parser.add_argument('config_file', help="Path to the configuration file")
+    parser.add_argument('--cores', type=int, default=79, help="Number of cores to use (default: 79)")
+    parser.add_argument('--parallel', type=int, default=10, help="Number of parallel tasks (default: 10)")
+    parser.add_argument('--snakefile', default='Snakefile', help="Path to custom Snakefile (default: 'Snakefile' in root directory)")
+    parser.add_argument('--root_dir', default='.', help="Root directory for the Snakefile (default: current directory)")
+    parser.add_argument('--slurm', action='store_true', help="Flag to use SLURM for job scheduling")
+    parser.add_argument('--executor', default=None, help="Specify a Snakemake executor (default: None)")
+    parser.add_argument('--executor_profile_path', default=None, help="Path to the executor profile file (default: None)")
 
-    if len(args) < 2 or args[1] in ['-h', '--help']:
-        print(usage)
-        sys.exit(0)
-
-    if len(args) < 3:
-        print("Error: Not enough arguments.")
-        print(usage)
-        sys.exit(1)
-
-    unfinished_dir = args[1]
-    config_file_path = args[2]
-    cores = 79 if len(args) <= 3 else int(args[3])
-    parallel = 10 if len(args) <= 4 else int(args[4])
+    args = parser.parse_args()
 
     print(f"Running with the following parameters:")
-    print(f"Unfinished directory: {unfinished_dir}")
-    print(f"Config file: {config_file_path}")
-    print(f"Cores: {cores}")
-    print(f"Parallel tasks: {parallel}")
-    print(f"Snakefile: {args[5] if len(args) > 5 else 'Default'}")
+    print(f"Unfinished directory: {args.unfinished_dir}")
+    print(f"Config file: {args.config_file}")
+    print(f"Cores: {args.cores}")
+    print(f"Parallel tasks: {args.parallel}")
+    print(f"Snakefile: {args.snakefile}")
+    print(f"Executor: {args.executor}")
+    print(f"Executor profile path: {args.executor_profile_path}")
 
-    # Load base config
-    with open(config_file_path, 'r') as config_file:
+    with open(args.config_file, 'r') as config_file:
         base_config = yaml.safe_load(config_file)
 
-    # Prepare directories
     finished_dir = "finished"
     duplication_dir = "duplication"
     metadata_dir = "metadata"
     temp_config_dir = "temp_configs"
     for dir_path in [finished_dir, duplication_dir, metadata_dir, temp_config_dir]:
-        if not os.path.exists(dir_path):
-            os.makedirs(dir_path)
+        os.makedirs(dir_path, exist_ok=True)
 
-    # Get metadata files
-    metadata_files = glob.glob(os.path.join(unfinished_dir, "*.txt"))
+    metadata_files = glob.glob(os.path.join(args.unfinished_dir, "*.txt"))
 
-    # Define task dictionary
     task_dict = {}
     for metadata_file in metadata_files:
         config = base_config.copy()
         config['metadata'] = metadata_file
         
-        # Create temporary YAML file
         temp_config_file = os.path.join(temp_config_dir, f"{os.path.basename(metadata_file)}.yaml")
         with open(temp_config_file, 'w') as temp_file:
             yaml.dump(config, temp_file)
         
         task_dict[os.path.basename(metadata_file)] = temp_config_file
 
-    # Get Snakefile path
-    sf = get_snakefile(root_dir, args[5] if len(args) > 5 else "Snakefile")
+    sf = get_snakefile(args.root_dir, args.snakefile)
 
-    # Process tasks
-    with ProcessPoolExecutor(max_workers=parallel) as executor:
-        tasks = [(metadata_file, unfinished_dir, sf, temp_config_file, cores) for metadata_file, temp_config_file in task_dict.items()]
-        future_to_task = {executor.submit(process_sample_file, task): task[0] for task in tasks}
+    with ProcessPoolExecutor(max_workers=args.parallel) as executor:
+        tasks = [
+            (metadata_file, args.unfinished_dir, sf, temp_config_file, args.cores, args.slurm, args.executor, args.executor_profile_path) 
+            for metadata_file, temp_config_file in task_dict.items()
+        ]
+        future_to_task = {executor.submit(process_sample_file, *task): task[0] for task in tasks}
         for future in as_completed(future_to_task):
             metadata_file = future_to_task[future]
             try:
@@ -187,10 +164,7 @@ def main(root_dir, args):
             except Exception as exc:
                 print(f'Task for {metadata_file} generated an exception: {exc}')
 
-    # Clean up temporary config files
     shutil.rmtree(temp_config_dir)
 
 if __name__ == '__main__':
-    root_dir = os.path.dirname(os.path.abspath(__file__))
-    args = sys.argv
-    main(root_dir, args) 
+    main()
