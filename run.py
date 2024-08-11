@@ -3,6 +3,7 @@ import sys
 import glob
 import shutil
 import subprocess
+import argparse
 
 import yaml
 
@@ -41,7 +42,7 @@ def get_snakefile(root_dir = ".", file = "Snakefile"):
     return sf
 
 # hard decode total download speed
-def run_snakemake(snakefile, configfiles, cores, unlock=False, timeout=3600):
+def run_snakemake(snakefile, configfiles, cores, unlock=False, timeout=3600, slurm=False):
     cmd = [
         "snakemake",
         "-s", snakefile,
@@ -55,6 +56,9 @@ def run_snakemake(snakefile, configfiles, cores, unlock=False, timeout=3600):
     
     if unlock:
         cmd.append("--unlock")
+    
+    if slurm:
+        cmd.extend(["--slurm", "--profile", "./slurm"])
     
     try:
         result = subprocess.run(cmd, check=True, capture_output=True, text=True, timeout=timeout)
@@ -72,13 +76,13 @@ from concurrent.futures import ProcessPoolExecutor, as_completed
 import multiprocessing
 
 def process_sample_file(args):
-    metadata_file, metadata_dir, sf, config_file, cores = args
+    metadata_file, metadata_dir, sf, config_file, cores, slurm = args
     try:
         # Run Snakemake to unlock any potential issues
-        run_snakemake(sf, [config_file], cores, unlock=True, timeout=3600)
+        run_snakemake(sf, [config_file], cores, unlock=True, timeout=3600, slurm=slurm)
         
         # Execute Snakemake with the provided configuration
-        status = run_snakemake(sf, [config_file], cores, timeout=3600)
+        status = run_snakemake(sf, [config_file], cores, timeout=3600, slurm=slurm)
         
         # Load the config to access notification settings
         with open(config_file, 'r') as f:
