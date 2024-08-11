@@ -9,5 +9,5 @@ set-threads:
   - DGE_analysis=1
   - bamtobw=10
 set-resources:
-  - align_and_count:mem_mb=32000
+  - align_and_count:mem_mb=64000
   - bamtobw:mem_mb=16000
