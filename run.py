@@ -77,10 +77,10 @@ def run_snakemake(snakefile, configfiles, cores, unlock=False, timeout=3600, exe
 from concurrent.futures import ProcessPoolExecutor, as_completed
 import multiprocessing
 
-def process_sample_file(metadata_file, metadata_dir, sf, config_file, cores, slurm, executor, executor_profile_path):
+def process_sample_file(metadata_file, metadata_dir, sf, config_file, cores, executor, executor_profile_path):
     try:
-        run_snakemake(sf, [config_file], cores, unlock=True, timeout=3600, slurm=slurm, executor=executor, executor_profile_path=executor_profile_path)
-        status = run_snakemake(sf, [config_file], cores, timeout=3600, slurm=slurm, executor=executor, executor_profile_path=executor_profile_path)
+        run_snakemake(sf, [config_file], cores, unlock=True, timeout=3600,  executor=executor, executor_profile_path=executor_profile_path)
+        status = run_snakemake(sf, [config_file], cores, timeout=3600,  executor=executor, executor_profile_path=executor_profile_path)
 
         with open(config_file, 'r') as f:
             config = yaml.safe_load(f)
@@ -110,7 +110,6 @@ def main():
     parser.add_argument('--parallel', type=int, default=10, help="Number of parallel tasks (default: 10)")
     parser.add_argument('--snakefile', default='Snakefile', help="Path to custom Snakefile (default: 'Snakefile' in root directory)")
     parser.add_argument('--root_dir', default='.', help="Root directory for the Snakefile (default: current directory)")
-    parser.add_argument('--slurm', action='store_true', help="Flag to use SLURM for job scheduling")
     parser.add_argument('--executor', default=None, help="Specify a Snakemake executor (default: None)")
     parser.add_argument('--executor_profile_path', default=None, help="Path to the executor profile file (default: None)")
 
@@ -152,7 +151,7 @@ def main():
 
     with ProcessPoolExecutor(max_workers=args.parallel) as executor:
         tasks = [
-            (metadata_file, args.unfinished_dir, sf, temp_config_file, args.cores, args.slurm, args.executor, args.executor_profile_path) 
+            (metadata_file, args.unfinished_dir, sf, temp_config_file, args.cores,  args.executor, args.executor_profile_path) 
             for metadata_file, temp_config_file in task_dict.items()
         ]
         future_to_task = {executor.submit(process_sample_file, *task): task[0] for task in tasks}
