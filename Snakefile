@@ -112,7 +112,7 @@ if use_download:
     # 定义规则 copy_sra
     rule copy_sra:
         input:
-            lambda wildcards: f"{download_path}/{wildcards.sra}/{wildcards.sra}.sra"
+            lambda wildcards: os.path.join({download_path},{wildcards.sra},{wildcards.sra}.sra)
         output: 
             temp("sra/{sra}/{sra}.sra")
         shell:
