@@ -2,7 +2,7 @@ executor: slurm
 jobs: 100
 default-resources:
   - mem_mb=8000
-  - time="02:00:00"
+  - runtime=120
 set-threads:
   - data_downloader=2
   - align_and_count=20
@@ -12,4 +12,4 @@ set-threads:
 set-resources:
   - align_and_count:mem_mb=64000
   - bamtobw:mem_mb=16000
-  - bamtobw:time="0-00:50:00"
+  - bamtobw:runtime=50

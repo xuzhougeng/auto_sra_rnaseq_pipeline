@@ -95,7 +95,7 @@ if os.path.exists(download_path):
 
 
 
-localrules: all, get_sra, merge_data, merge_R1_data, merge_R2_data
+localrules: all, get_sra, merge_data, merge_R1_data, merge_R2_data, data_conversion_single, data_conversion_pair
 
 rule all:
     input:
@@ -108,7 +108,7 @@ rule all:
 if use_download:
     rule get_sra:
         input:
-            lambda wildcards: os.path.join({download_path},{wildcards.sra},{wildcards.sra}.sra)
+            lambda wildcards: os.path.join(download_path,wildcards.sra,f"{wildcards.sra}.sra")
         output: 
             temp("sra/{sra}/{sra}.sra")
         shell:
