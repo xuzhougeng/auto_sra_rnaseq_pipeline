@@ -42,7 +42,7 @@ def get_snakefile(root_dir = ".", file = "Snakefile"):
     return sf
 
 # hard decode total download speed
-def run_snakemake(snakefile, configfiles, cores, unlock=False, timeout=3600, executor=None, executor_profile_path=None):
+def run_snakemake(snakefile, configfiles, cores, unlock=False, timeout=None, executor=None, executor_profile_path=None):
     cmd = [
         "snakemake",
         "-s", snakefile,
@@ -77,10 +77,10 @@ def run_snakemake(snakefile, configfiles, cores, unlock=False, timeout=3600, exe
 from concurrent.futures import ProcessPoolExecutor, as_completed
 import multiprocessing
 
-def process_sample_file(metadata_file, metadata_dir, sf, config_file, cores, executor, executor_profile_path):
+def process_sample_file(metadata_file, metadata_dir, sf, config_file, cores, executor, executor_profile_path, timeout):
     try:
-        run_snakemake(sf, [config_file], cores, unlock=True, timeout=3600,  executor=executor, executor_profile_path=executor_profile_path)
-        status = run_snakemake(sf, [config_file], cores, timeout=3600,  executor=executor, executor_profile_path=executor_profile_path)
+        run_snakemake(sf, [config_file], cores, unlock=True, timeout=timeout, executor=executor, executor_profile_path=executor_profile_path)
+        status = run_snakemake(sf, [config_file], cores, timeout=timeout, executor=executor, executor_profile_path=executor_profile_path)
 
         with open(config_file, 'r') as f:
             config = yaml.safe_load(f)
