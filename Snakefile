@@ -90,7 +90,7 @@ def get_input_data(wildcards):
 download_path = config.get('download_path')
 # 判断路径是否存在
 use_download = False
-if os.path.exists(path):
+if os.path.exists(download_path):
     use_download = True
 
 
