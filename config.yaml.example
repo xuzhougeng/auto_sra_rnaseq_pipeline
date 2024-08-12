@@ -1,6 +1,7 @@
 index: "/data/reference/genome/GRCh38/STAR"
 GTF: "/data/reference/genome/GRCh38/Homo_sapiens.GRCh38.95.sort.gtf"
 metadata: "metadata"
+download_path: ""
 
 # SRR separator
 srr_separator: ","

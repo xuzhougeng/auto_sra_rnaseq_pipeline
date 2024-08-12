@@ -27,15 +27,16 @@ rule merge_data:
     priority: 20
     resources:
         limit_merge = 1
-    output: temp("00_raw_data/{sample}.fq.gz")
-    shell: "cat {input} | pigz > {output}"
+    output: temp("00_raw_data/{sample}.fq")
+    #shell: "cat {input} | pigz > {output}"
+    shell: "cat {input}  > {output}"
 
 rule data_clean_single:
-    input: "00_raw_data/{sample}.fq.gz"
+    input: "00_raw_data/{sample}.fq"
     priority: 30
     wildcard_constraints:
         sample="[A-Za-z0-9]+"
-    output: temp("01_clean_data/{sample}.fq.gz")
+    output: temp("01_clean_data/{sample}.fq")
     threads: config['fastp_threads']
     log:
         json = os.path.join( "log", '{sample}.json'),

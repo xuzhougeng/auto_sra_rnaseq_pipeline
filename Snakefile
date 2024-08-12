@@ -81,13 +81,20 @@ def get_input_data(wildcards):
     sample = wildcards.sample
     paired = df.loc[df['GSM'] == sample, 'paired'].tolist()[0]  == "PAIRED"
     if paired:
-        return [ os.path.join("01_clean_data", sample + '_R1.fq.gz'), 
-        os.path.join("01_clean_data",sample + '_R2.fq.gz')]
+        return [ os.path.join("01_clean_data", sample + '_R1.fq'), 
+        os.path.join("01_clean_data",sample + '_R2.fq')]
     else:
-        return [  os.path.join("01_clean_data", sample + '.fq.gz') ]
+        return [  os.path.join("01_clean_data", sample + '.fq') ]
 
 
-if config.get('download_path'):
+download_path = config.get('download_path')
+# 判断路径是否存在
+use_download = False
+if os.path.exists(path):
+    use_download = True
+
+
+if use_download:
     localrules: all, copy_sra
 else:
     localrules: all, data_downloader, 
@@ -100,13 +107,12 @@ rule all:
         count_files
         
 # 判断是否存在 'download_path' 配置
-if config.get('download_path'):
-    sra_path = config['download_path']
+if use_download:
 
     # 定义规则 copy_sra
     rule copy_sra:
         input:
-            lambda wildcards: f"{sra_path}/{wildcards.sra}/{wildcards.sra}.sra"
+            lambda wildcards: f"{download_path}/{wildcards.sra}/{wildcards.sra}.sra"
         output: 
             temp("sra/{sra}/{sra}.sra")
         shell:
@@ -172,7 +178,6 @@ rule align_and_count:
     	--genomeDir {params.index} \
     	--runThreadN {threads} \
     	--readFilesIn {input} \
-    	--readFilesCommand zcat \
     	--outFileNamePrefix 02_read_align/{params.prefix}_ \
     	--outSAMtype BAM SortedByCoordinate \
     	--outBAMsortingThreadN 10 \
@@ -181,6 +186,7 @@ rule align_and_count:
         --outTmpKeep None && \
         mv 02_read_align/{params.prefix}_Log.final.out {log}
     """
+    # delete --readFilesCommand zcat \
 
 rule build_bam_index:
     input: "02_read_align/{sample}_Aligned.sortedByCoord.out.bam"

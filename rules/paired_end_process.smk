@@ -38,31 +38,33 @@ rule data_conversion_pair:
 rule merge_R1_data:
     input: get_merged_input_data_R1
     priority: 20
-    threads: config['pigz_threads']
+    #threads: config['pigz_threads']
     resources:
         limit_merge = 1
-    output: temp("00_raw_data/{sample}_R1.fq.gz")
-    shell: "cat {input} | pigz -p {threads} > {output}"
+    output: temp("00_raw_data/{sample}_R1.fq")
+    #shell: "cat {input} | pigz -p {threads} > {output}"
+    shell: "cat {input}  > {output}"
 
 rule merge_R2_data:
     input: get_merged_input_data_R2
     priority: 20
-    threads: config['pigz_threads']
+    #threads: config['pigz_threads']
     resources:
         limit_merge = 1
-    output: temp("00_raw_data/{sample}_R2.fq.gz")
-    shell: "cat {input} | pigz -p {threads} > {output}"
+    output: temp("00_raw_data/{sample}_R2.fq")
+    #shell: "cat {input} | pigz -p {threads} > {output}"
+    shell: "cat {input}  > {output}"
 
 rule data_clean_pair:
     input:
-        r1 = "00_raw_data/{sample}_R1.fq.gz",
-        r2 = "00_raw_data/{sample}_R2.fq.gz"
+        r1 = "00_raw_data/{sample}_R1.fq",
+        r2 = "00_raw_data/{sample}_R2.fq"
     priority: 30
     wildcard_constraints:
         sample="[A-Za-z0-9]+"
     output:
-        r1 = temp("01_clean_data/{sample}_R1.fq.gz"),
-        r2 = temp("01_clean_data/{sample}_R2.fq.gz") 
+        r1 = temp("01_clean_data/{sample}_R1.fq"),
+        r2 = temp("01_clean_data/{sample}_R2.fq") 
     conda:
         "envs/preprocess.yaml"
     threads: config['fastp_threads']
