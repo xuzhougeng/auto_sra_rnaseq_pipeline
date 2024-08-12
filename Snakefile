@@ -109,11 +109,13 @@ if use_download:
     rule get_sra:
         input:
             lambda wildcards: os.path.join(download_path,wildcards.sra,f"{wildcards.sra}.sra")
+        params: 
+            download_path = download_path
         output: 
             temp("sra/{sra}/{sra}.sra")
         shell:
             """
-            cp -r {sra_path}/{wildcards.sra} sra/
+            cp -r {params.download_path}/{wildcards.sra} sra/
             """
 else:
     rule get_sra:
