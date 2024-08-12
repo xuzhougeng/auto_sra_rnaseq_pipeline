@@ -108,7 +108,7 @@ if config.get('download_path'):
         input:
             lambda wildcards: f"{sra_path}/{wildcards.sra}/{wildcards.sra}.sra"
         output: 
-            "sra/{sra}/{sra}.sra"
+            temp("sra/{sra}/{sra}.sra")
         shell:
             """
             cp -r {sra_path}/{wildcards.sra} sra/
