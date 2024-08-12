@@ -94,10 +94,8 @@ if os.path.exists(download_path):
     use_download = True
 
 
-if use_download:
-    localrules: all, copy_sra
-else:
-    localrules: all, data_downloader, 
+
+localrules: all, get_sra, merge_data, merge_R1_data, merge_R2_data
 
 rule all:
     input:
@@ -108,9 +106,7 @@ rule all:
         
 # 判断是否存在 'download_path' 配置
 if use_download:
-
-    # 定义规则 copy_sra
-    rule copy_sra:
+    rule get_sra:
         input:
             lambda wildcards: os.path.join({download_path},{wildcards.sra},{wildcards.sra}.sra)
         output: 
@@ -120,7 +116,7 @@ if use_download:
             cp -r {sra_path}/{wildcards.sra} sra/
             """
 else:
-    rule data_downloader:
+    rule get_sra:
         priority: 5
         params: 
             sra_id = lambda wildcards: wildcards.sra,
