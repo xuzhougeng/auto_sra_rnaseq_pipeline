@@ -32,7 +32,8 @@ rule data_conversion_pair:
         "envs/download.yaml"
     resources:
         limit_dump = 1
-    shell:"fastq-dump --split-files {input} -O sra" 
+    shell:"fasterq-dump sra/{wildcards.sra} -O sra" 
+    #shell:"fastq-dump --split-files sra/{wildcards.sra} -O sra" 
 
 rule merge_R1_data:
     input: get_merged_input_data_R1

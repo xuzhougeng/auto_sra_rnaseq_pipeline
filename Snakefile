@@ -87,7 +87,11 @@ def get_input_data(wildcards):
         return [  os.path.join("01_clean_data", sample + '.fq.gz') ]
 
 
-localrules: all, data_downloader
+if config.get('download_path'):
+    localrules: all, copy_sra
+else:
+    localrules: all, data_downloader, 
+
 rule all:
     input:
         deseq_file,
@@ -95,36 +99,48 @@ rule all:
         bigwig_files,
         count_files
         
-rule download:
-    input:
-        sra_files
+# 判断是否存在 'download_path' 配置
+if config.get('download_path'):
+    sra_path = config['download_path']
 
-# download data from NCBI
-rule data_downloader:
-    priority: 5
-    params: 
-        sra_id = lambda wildcards: wildcards.sra,
-        maxsize = "100G"
-    output: "sra/{sra}/{sra}.sra"
-    threads: config['download_threads']
-    resources:
-        rx = 40
-    conda:
-        "envs/download.yaml"
-    benchmark:
-        "benchmark/download/{sra}.tsv"
-    shell:"""
-    if [ -f {output} ] ;then \
-        echo "{params.sra_id} has beed downloaded" ;\   
-    elif [ -f sra/{params.sra_id}.sra.lock ] ; then \
-        rm -f sra/{params.sra_id}.sra.lock sra/{params.sra_id}.sra.prf sra/{params.sra_id}.sra.tmp && \
-        prefetch --max-size {params.maxsize} -O sra {params.sra_id} ;\
-    elif [ ! -f {output} ] ;then \
-        prefetch --max-size {params.maxsize} -O sra {params.sra_id}  ;\
-    else  \
-        exit 1 ;\
-    fi
-    """
+    # 定义规则 copy_sra
+    rule copy_sra:
+        input:
+            lambda wildcards: f"{sra_path}/{wildcards.sra}/{wildcards.sra}.sra"
+        output: 
+            "sra/{sra}/{sra}.sra"
+        shell:
+            """
+            cp -r {sra_path}/{wildcards.sra} sra/
+            """
+else:
+    rule data_downloader:
+        priority: 5
+        params: 
+            sra_id = lambda wildcards: wildcards.sra,
+            maxsize = "100G"
+        output: "sra/{sra}/{sra}.sra"
+        threads: config['download_threads']
+        resources:
+            rx = 40
+        conda:
+            "envs/download.yaml"
+        benchmark:
+            "benchmark/download/{sra}.tsv"
+        shell:"""
+        if [ -f {output} ] ;then \
+            echo "{params.sra_id} has beed downloaded" ;\   
+        elif [ -f sra/{params.sra_id}.sra.lock ] ; then \
+            rm -f sra/{params.sra_id}.sra.lock sra/{params.sra_id}.sra.prf sra/{params.sra_id}.sra.tmp && \
+            prefetch --max-size {params.maxsize} -O sra {params.sra_id} ;\
+        elif [ ! -f {output} ] ;then \
+            prefetch --max-size {params.maxsize} -O sra {params.sra_id}  ;\
+        else  \
+            exit 1 ;\
+        fi
+        """
+
+
 
 include: "rules/single_end_process.smk" # single end
 include: "rules/paired_end_process.smk" # pair end
