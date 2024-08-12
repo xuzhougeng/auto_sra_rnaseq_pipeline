@@ -2,7 +2,7 @@ executor: slurm
 jobs: 100
 default-resources:
   - mem_mb=8000
-  - time=02:00:00
+  - time="02:00:00"
 set-threads:
   - data_downloader=2
   - align_and_count=20
