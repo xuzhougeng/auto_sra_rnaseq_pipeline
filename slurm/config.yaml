@@ -7,7 +7,8 @@ set-threads:
   - align_and_count=20
   - combine_count=1
   - DGE_analysis=1
-  - bamtobw=10
+  - bamtobw=8
 set-resources:
   - align_and_count:mem_mb=64000
   - bamtobw:mem_mb=16000
+  - bamtobw:time=0-00:50:00
