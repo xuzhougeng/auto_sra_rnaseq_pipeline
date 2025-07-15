@@ -72,7 +72,7 @@ cd results
 export PATH=~/micromamba/envs/r432/bin/:~/micromamba/envs/gpsa/bin/:$PATH;
 ulimit -n 10240
 
-python3 /path/to/auto_sra_rnaseq_pipeline/run.py --cores 120  unfinished config.yaml 
+python3 /path/to/auto_sra_rnaseq_pipeline/run.py --cores 120  unfinished config.yaml --SNake
 
 # unfinished指的是未完成任务的位置
 # config.yaml是你的配置文件
@@ -91,12 +91,14 @@ snakemake --configfile config.yaml -s auto_sra_rnaseq_pipeline/Snakefile  --unlo
 ## 配置文件说明
 
 
-如下参数控制不同规则的运行所需要的规则数
+如下参数控制不同规则的运行所需要的线程数
 
-- download_threads: 1
 - pigz_threads: 10
 - fastp_threads: 8
 - star_threads: 20
+
+SRA数据路径配置：
+- sra_data_path: "sra"  # 指定已下载SRA文件的存储路径
 
 如下参数和任务完成后的提醒有关
 
