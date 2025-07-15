@@ -63,13 +63,14 @@ def run_snakemake(snakefile, configfiles, cores, unlock=False, timeout=None, exe
         if executor_profile_path:
             cmd.extend(["--profile", executor_profile_path])
 
+    print(f"Running command: {' '.join(cmd)}")
+    
     try:
-        result = subprocess.run(cmd, check=True, capture_output=True, text=True, timeout=timeout)
+        # 不捕获输出，直接显示到终端
+        result = subprocess.run(cmd, check=True, timeout=timeout)
         return True
     except subprocess.CalledProcessError as e:
-        print(f"Snakemake command failed: {e}", file=sys.stderr)
-        print(f"Stdout: {e.stdout}", file=sys.stderr)
-        print(f"Stderr: {e.stderr}", file=sys.stderr)
+        print(f"Snakemake command failed with return code: {e.returncode}", file=sys.stderr)
         return False
     except subprocess.TimeoutExpired:
         print(f"Snakemake command timed out after {timeout} seconds", file=sys.stderr)
@@ -79,7 +80,10 @@ def run_snakemake(snakefile, configfiles, cores, unlock=False, timeout=None, exe
 
 def process_sample_file(metadata_file, metadata_dir, sf, config_file, cores, executor, executor_profile_path, timeout):
     try:
+        print(f"Unlocking workflow for {metadata_file}...")
         run_snakemake(sf, [config_file], cores, unlock=True, timeout=timeout, executor=executor, executor_profile_path=executor_profile_path)
+        
+        print(f"Starting Snakemake execution for {metadata_file}...")
         status = run_snakemake(sf, [config_file], cores, timeout=timeout, executor=executor, executor_profile_path=executor_profile_path)
 
         with open(config_file, 'r') as f:
