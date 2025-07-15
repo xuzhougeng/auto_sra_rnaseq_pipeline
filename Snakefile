@@ -115,7 +115,24 @@ if use_download:
             temp("sra/{sra}/{sra}.sra")
         shell:
             """
-            cp -r {params.download_path}/{wildcards.sra} sra/
+            source_file="{params.download_path}/{wildcards.sra}/{wildcards.sra}.sra"
+            target_file="{output}"
+            
+            # 创建目标目录
+            mkdir -p $(dirname "$target_file")
+            
+            # 获取源文件和目标目录的设备号
+            source_dev=$(stat -c %d "$source_file")
+            target_dev=$(stat -c %d $(dirname "$target_file"))
+            
+            # 如果在同一个文件系统上，使用硬链接
+            if [ "$source_dev" = "$target_dev" ]; then
+                echo "Using hard link for {wildcards.sra}"
+                ln "$source_file" "$target_file"
+            else
+                echo "Using copy for {wildcards.sra}"
+                cp "$source_file" "$target_file"
+            fi
             """
 else:
     rule get_sra:
