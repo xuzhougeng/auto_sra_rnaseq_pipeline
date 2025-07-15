@@ -66,45 +66,53 @@ def run_snakemake(snakefile, configfiles, cores, unlock=False, timeout=None, exe
     print(f"Running command: {' '.join(cmd)}")
     
     try:
-        # 不捕获输出，直接显示到终端
-        result = subprocess.run(cmd, check=True, timeout=timeout)
-        return True
+        # 捕获stderr来检查错误类型，但stdout仍然实时显示
+        result = subprocess.run(cmd, check=True, timeout=timeout, stderr=subprocess.PIPE, text=True)
+        return True, ""
     except subprocess.CalledProcessError as e:
         print(f"Snakemake command failed with return code: {e.returncode}", file=sys.stderr)
-        return False
+        stderr_output = e.stderr if e.stderr else ""
+        return False, stderr_output
     except subprocess.TimeoutExpired:
         print(f"Snakemake command timed out after {timeout} seconds", file=sys.stderr)
-        return False
+        return False, "Timeout"
 
-
-
-def process_sample_file(metadata_file, metadata_dir, sf, config_file, cores, executor, executor_profile_path, timeout):
+def process_sample_file(metadata_file, metadata_dir, 
+                        finished_dir, failed_dir, 
+                        sf, config_file, cores, executor, executor_profile_path, timeout):
     try:
         print(f"Unlocking workflow for {metadata_file}...")
-        run_snakemake(sf, [config_file], cores, unlock=True, timeout=timeout, executor=executor, executor_profile_path=executor_profile_path)
+        unlock_status, unlock_error = run_snakemake(sf, [config_file], cores, unlock=True, timeout=timeout, executor=executor, executor_profile_path=executor_profile_path)
         
         print(f"Starting Snakemake execution for {metadata_file}...")
-        status = run_snakemake(sf, [config_file], cores, timeout=timeout, executor=executor, executor_profile_path=executor_profile_path)
+        status, error_output = run_snakemake(sf, [config_file], cores, timeout=timeout, executor=executor, executor_profile_path=executor_profile_path)
 
         with open(config_file, 'r') as f:
             config = yaml.safe_load(f)
         
+        # 检查是否有MissingOutputException错误
+        has_missing_output_error = "MissingOutputException" in error_output
+        
         if status:
             contents = f"Snakemake run successfully for {metadata_file}"
-            shutil.move(os.path.join(metadata_dir, metadata_file), os.path.join("finished", metadata_file))
+            shutil.move(os.path.join(metadata_dir, metadata_file), os.path.join(finished_dir, metadata_file))
         else:
-            contents = f"Snakemake run failed or timed out for {metadata_file}"
+            if has_missing_output_error:
+                contents = f"Snakemake run failed for {metadata_file} - MissingOutputException (filesystem latency issue)"
+            else:
+                contents = f"Snakemake run failed or timed out for {metadata_file}"
+            shutil.move(os.path.join(metadata_dir, metadata_file), os.path.join(failed_dir, metadata_file))
 
         if config.get('bark'):
             bark_notification(config['bark_api'], contents)
         if config.get('feishu'):
             feishu_notification(config['feishu_api'], contents)
         
-        return contents
+        return contents, has_missing_output_error
     except Exception as e:
         error_message = f"Error processing {metadata_file}: {str(e)}"
         print(error_message, file=sys.stderr)
-        return error_message
+        return error_message, False
 
 def check_sra_files(metadata_file, sra_dir):
     """检查metadata文件中所有SRR对应的SRA文件是否存在"""
@@ -154,10 +162,10 @@ def main():
         base_config = yaml.safe_load(config_file)
 
     finished_dir = "finished"
-    duplication_dir = "duplication"
+    failed_dir = "failed"
     metadata_dir = "metadata"
     temp_config_dir = "temp_configs"
-    for dir_path in [finished_dir, duplication_dir, metadata_dir, temp_config_dir]:
+    for dir_path in [finished_dir, failed_dir, metadata_dir, temp_config_dir]:
         os.makedirs(dir_path, exist_ok=True)
 
     metadata_files = glob.glob(os.path.join(args.unfinished_dir, "*.txt"))
@@ -168,7 +176,11 @@ def main():
     total_tasks = len(metadata_files)
     processed_tasks = 0
     skipped_tasks = 0
+    failed_tasks = 0
+    missing_output_tasks = 0
     skipped_files = []
+    failed_files = []
+    missing_output_files = []
 
     # 串行处理每个metadata文件
     for metadata_file in metadata_files:
@@ -195,9 +207,11 @@ def main():
         with open(temp_config_file, 'w') as temp_file:
             yaml.dump(config, temp_file)
         
-        result = process_sample_file(
+        result, has_missing_output = process_sample_file(
             os.path.basename(metadata_file), 
             args.unfinished_dir, 
+            finished_dir,
+            failed_dir,
             sf, 
             temp_config_file, 
             args.cores, 
@@ -205,16 +219,37 @@ def main():
             args.executor_profile_path, 
             args.timeout
         )
+        
         print(f'Task for {metadata_file} completed with result: {result}')
-        processed_tasks += 1
+        
+        if "successfully" in result:
+            processed_tasks += 1
+        else:
+            failed_tasks += 1
+            failed_files.append(os.path.basename(metadata_file))
+            
+            if has_missing_output:
+                missing_output_tasks += 1
+                missing_output_files.append(os.path.basename(metadata_file))
 
     shutil.rmtree(temp_config_dir)
 
     # 输出统计信息
     print(f"\n=== Processing Summary ===")
     print(f"Total tasks: {total_tasks}")
-    print(f"Processed tasks: {processed_tasks}")
+    print(f"Successfully processed: {processed_tasks}")
+    print(f"Failed tasks: {failed_tasks}")
     print(f"Skipped tasks: {skipped_tasks}")
+    
+    if missing_output_tasks > 0:
+        print(f"\nTasks with MissingOutputException errors: {missing_output_tasks}")
+        for missing_output_file in missing_output_files:
+            print(f"  - {missing_output_file}")
+    
+    if failed_tasks > 0:
+        print(f"\nAll failed files:")
+        for failed_file in failed_files:
+            print(f"  - {failed_file}")
     
     if skipped_tasks > 0:
         print(f"\nSkipped files due to missing SRA files:")
