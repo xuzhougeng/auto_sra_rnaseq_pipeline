@@ -9,31 +9,36 @@
 
 ```bash
 git clone https://github.com/xuzhougeng/auto_sra_rnaseq_pipeline.git
-# or mirror
-git clone https://gitclone.com/github.com/xuzhougeng/auto_sra_rnaseq_pipeline.git
 ```
 
-在服务器上安装依赖如下的依赖环境
+### 配置环境
 
-- [pigz](https://zlib.net/pigz/): 并行化文件压缩
-- snakemake
-- sra-tools=2.10.8
-- fastp
-- samtools
-- star: 如果需要在多台服务器运行该流程，需要确保star的版本一致
-- deeptools
-- R/DESeq2, data.table, ashr
+snkeamek
 
-我们可以使用bioconda来安装相关环境
-
-```bash
-conda create -n rna_seq snakemake sra-tools>2.10.0 fastp star deeptools
-# activate the environment
-conda activate rna_seq
+```
+conda create -n snakemake -c conda-forge python=3.11 -y
+conda run -n snakemake python -m \
+pip install snakemake==8.16 pandas  -i https://pypi.tuna.tsinghua.edu.cn/simple
 ```
 
-sra-tools的版本必须大于2.10.0, 因为之前版本会直接在目录下输出sra,但是新版本会新建一个以SRA编号
-命名的文件夹，然后在该目录输出sra文件
+R
+
+```
+conda create -c conda-forge -n r432 r-base==4.3.2 -y && \
+conda install -n r432 -y -c conda-forge -c bioconda bioconductor-deseq2=1.42.0 r-ashr=2.2.63 r-data.table
+conda install -n r432 -y -c conda-forge -c bioconda bioconductor-genomeinfodbdata=1.2.11 --force-reinstall
+```
+
+gpsa
+
+```
+# micromamba
+conda create -n gpsa -c conda-forge -c bioconda \
+ star=2.7.1a samtools fastp sra-tools deeptools pigz -y
+``` 
+
+
+### 构建索引
 
 我们需要构建STAR索引，以及准备参考基因组对应的GTF
 
@@ -46,6 +51,8 @@ STAR \
     --genomeDir $index \
     --genomeFastaFiles ${reference}
 ```
+
+### 执行
 
 创建一个项目文件夹，然后将我们仓库中的config.yaml 复制到该目录下，
 
@@ -62,7 +69,11 @@ cd results
 运行方法
 
 ```bash
-python3 /path/to/auto_sra_rnaseq_pipeline/run.py unfinished config.yaml 79
+export PATH=~/micromamba/envs/r432/bin/:~/micromamba/envs/gpsa/bin/:$PATH;
+ulimit -n 10240
+
+python3 /path/to/auto_sra_rnaseq_pipeline/run.py --cores 120  unfinished config.yaml 
+
 # unfinished指的是未完成任务的位置
 # config.yaml是你的配置文件
 # 79 表示任务数
