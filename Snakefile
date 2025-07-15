@@ -90,9 +90,14 @@ def get_input_data(wildcards):
 download_path = config.get('download_path')
 # 判断路径是否存在
 use_download = False
-if os.path.exists(download_path):
+if download_path and os.path.exists(download_path):
     use_download = True
-
+    # 检查download_path是否就是当前的sra目录
+    current_sra_path = os.path.abspath("sra")
+    download_path_abs = os.path.abspath(download_path)
+    is_same_dir = (download_path_abs == current_sra_path)
+else:
+    is_same_dir = False
 
 
 localrules: all, get_sra, merge_data, merge_R1_data, merge_R2_data, data_conversion_single, data_conversion_pair
@@ -106,34 +111,47 @@ rule all:
         
 # 判断是否存在 'download_path' 配置
 if use_download:
-    rule get_sra:
-        input:
-            lambda wildcards: os.path.join(download_path,wildcards.sra,f"{wildcards.sra}.sra")
-        params: 
-            download_path = download_path
-        output: 
-            temp("sra/{sra}/{sra}.sra")
-        shell:
-            """
-            source_file="{params.download_path}/{wildcards.sra}/{wildcards.sra}.sra"
-            target_file="{output}"
-            
-            # 创建目标目录
-            mkdir -p $(dirname "$target_file")
-            
-            # 获取源文件和目标目录的设备号
-            source_dev=$(stat -c %d "$source_file")
-            target_dev=$(stat -c %d $(dirname "$target_file"))
-            
-            # 如果在同一个文件系统上，使用硬链接
-            if [ "$source_dev" = "$target_dev" ]; then
-                echo "Using hard link for {wildcards.sra}"
-                ln "$source_file" "$target_file"
-            else
-                echo "Using copy for {wildcards.sra}"
-                cp "$source_file" "$target_file"
-            fi
-            """
+    if is_same_dir:
+        # 如果download_path就是当前sra目录，直接使用已存在的文件
+        rule get_sra:
+            output: 
+                temp("sra/{sra}/{sra}.sra")
+            run:
+                # 检查文件是否存在，如果不存在则报错
+                if not os.path.exists(output[0]):
+                    raise FileNotFoundError(f"SRA file not found: {output[0]}")
+                else:
+                    print(f"Using existing SRA file: {output[0]}")
+    else:
+        # 如果download_path是其他目录，需要复制或链接
+        rule get_sra:
+            input:
+                lambda wildcards: os.path.join(download_path,wildcards.sra,f"{wildcards.sra}.sra")
+            params: 
+                download_path = download_path
+            output: 
+                temp("sra/{sra}/{sra}.sra")
+            shell:
+                """
+                source_file="{params.download_path}/{wildcards.sra}/{wildcards.sra}.sra"
+                target_file="{output}"
+                
+                # 创建目标目录
+                mkdir -p $(dirname "$target_file")
+                
+                # 获取源文件和目标目录的设备号
+                source_dev=$(stat -c %d "$source_file")
+                target_dev=$(stat -c %d $(dirname "$target_file"))
+                
+                # 如果在同一个文件系统上，使用硬链接
+                if [ "$source_dev" = "$target_dev" ]; then
+                    echo "Using hard link for {wildcards.sra}"
+                    ln "$source_file" "$target_file"
+                else
+                    echo "Using copy for {wildcards.sra}"
+                    cp "$source_file" "$target_file"
+                fi
+                """
 else:
     rule get_sra:
         priority: 5
