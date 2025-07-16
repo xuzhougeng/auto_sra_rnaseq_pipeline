@@ -90,7 +90,7 @@ def get_input_data(wildcards):
 # SRA数据路径配置
 sra_data_path = config.get('sra_data_path', 'sra')
 
-localrules: all, get_sra, merge_data, merge_R1_data, merge_R2_data, data_conversion_single, data_conversion_pair
+localrules: all, get_sra, merge_data, merge_R1_data, merge_R2_data, data_conversion_single, data_conversion_pair, star_preload, star_cleanup
 
 rule all:
     input:
