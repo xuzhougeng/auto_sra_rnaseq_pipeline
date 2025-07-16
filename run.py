@@ -42,10 +42,88 @@ def get_snakefile(root_dir = ".", file = "Snakefile"):
         sys.exit("Unable to locate the Snakemake workflow file;  tried %s" %sf)
     return sf
 
+def find_snakemake():
+    """查找snakemake命令的路径"""
+    # 首先尝试直接调用snakemake
+    try:
+        result = subprocess.run(["snakemake", "--version"], 
+                              capture_output=True, text=True, check=True)
+        print(f"Found snakemake in PATH: {result.stdout.strip()}")
+        return "snakemake"
+    except (subprocess.CalledProcessError, FileNotFoundError, PermissionError):
+        print("snakemake not found in PATH, searching common conda locations...")
+    
+    # 尝试常见的conda环境路径
+    home_dir = os.path.expanduser("~")
+    conda_paths = [
+        # miniconda/anaconda默认安装位置
+        os.path.join(home_dir, "miniconda3", "envs", "snakemake", "bin", "snakemake"),
+        os.path.join(home_dir, "anaconda3", "envs", "snakemake", "bin", "snakemake"),
+        os.path.join(home_dir, "micromamba", "envs", "snakemake", "bin", "snakemake"),
+        # 测试路径
+        os.path.join(home_dir, "test_conda", "envs", "snakemake", "bin", "snakemake"),
+        # Docker容器常见路径
+        "/opt/conda/envs/snakemake/bin/snakemake",
+        "/usr/local/bin/snakemake",
+        # 其他可能的环境名称
+        os.path.join(home_dir, "miniconda3", "envs", "rna_seq", "bin", "snakemake"),
+        os.path.join(home_dir, "anaconda3", "envs", "rna_seq", "bin", "snakemake"),
+        os.path.join(home_dir, "micromamba", "envs", "rna_seq", "bin", "snakemake"),
+    ]
+    
+    for path in conda_paths:
+        if os.path.exists(path):
+            try:
+                result = subprocess.run([path, "--version"], 
+                                      capture_output=True, text=True, check=True)
+                env_name = path.split("/")[-3]
+                conda_type = "micromamba" if "micromamba" in path else "conda"
+                print(f"✅ Found snakemake in conda environment")
+                print(f"   Path: {path}")
+                print(f"   Version: {result.stdout.strip()}")
+                print(f"   Environment: {env_name}")
+                print(f"   💡 建议: 为了确保一致性，建议运行前激活此环境:")
+                print(f"      {conda_type} activate {env_name}")
+                print(f"   💡 或将此路径添加到PATH环境变量:")
+                print(f"      export PATH=\"{os.path.dirname(path)}:$PATH\"")
+                return path
+            except subprocess.CalledProcessError:
+                continue
+    
+    # 如果都找不到，提供详细的错误信息
+    error_msg = """
+❌ 无法找到snakemake命令！
+
+请检查以下几个方面：
+
+1. 确认snakemake已安装：
+   conda list snakemake
+   
+2. 激活包含snakemake的conda环境：
+   conda activate snakemake
+   
+3. 或者确保snakemake在PATH中：
+   which snakemake
+   snakemake --version
+
+4. 如果需要安装snakemake：
+   conda create -n snakemake -c conda-forge python=3.11 snakemake pandas -y
+   conda activate snakemake
+
+5. 检查的路径包括：
+"""
+    for path in conda_paths:
+        error_msg += f"   - {path}\n"
+    
+    raise FileNotFoundError(error_msg)
+
 # hard decode total download speed
 def run_snakemake(snakefile, configfiles, cores, unlock=False, timeout=None, executor=None, executor_profile_path=None):
+    # 查找snakemake命令
+    snakemake_cmd = find_snakemake()
+    
     cmd = [
-        "snakemake",
+        snakemake_cmd,
         "-s", snakefile,
         "--configfile", configfiles[0],
         "--cores", str(cores),
@@ -196,6 +274,16 @@ def main():
     print(f"Executor profile path: {args.executor_profile_path}")
     print(f"Timeout: {args.timeout}")
     print(f"SRA directory: {args.sra_dir}")
+
+    # 在开始处理前检查snakemake环境
+    print("\n🔍 Checking Snakemake environment...")
+    try:
+        snakemake_cmd = find_snakemake()
+        print(f"✅ Snakemake environment check passed: {snakemake_cmd}")
+    except FileNotFoundError as e:
+        print(f"❌ Snakemake environment check failed:")
+        print(str(e))
+        sys.exit(1)
 
     with open(args.config_file, 'r') as config_file:
         base_config = yaml.safe_load(config_file)
