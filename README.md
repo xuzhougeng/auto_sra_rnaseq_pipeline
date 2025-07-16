@@ -64,7 +64,24 @@ cd results
 
 注意修改config.yaml的配置信息，其中metadata指的是存放metadata文件的目录，metadata文件必须以.txt结尾，否则不识别
 
-另外metadata必须包括如下列， GSM, GSE, gene, SRR, 否则程序运行绝对失败
+### metadata文件格式要求
+
+metadata文件必须满足以下要求，否则程序会跳过处理：
+
+**必需列：**
+- GSM, GSE, gene, SRR, paired
+
+**数据完整性要求：**
+- SRR字段不能为空或NA值
+- paired字段不能为空或NA值，且必须是'PAIRED'或'SINGLE'
+
+**示例：**
+```
+GSE     GSM     gene    method  celline group   group_name      type    platform        SRR     paired
+GSE251750       GSM7987315      SMCHD1  ko      LHCN-M2 control LHCN-M2 cells, wildtype RNA     SRA     GPL18573        SRR12345        PAIRED
+```
+
+程序会在处理前自动验证metadata文件格式，发现问题的文件会被跳过并显示具体错误信息。
 
 运行方法
 

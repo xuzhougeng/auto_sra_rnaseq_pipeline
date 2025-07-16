@@ -114,6 +114,39 @@ def process_sample_file(metadata_file, metadata_dir,
         print(error_message, file=sys.stderr)
         return error_message, False
 
+def validate_metadata_file(metadata_file):
+    """验证metadata文件格式是否符合要求"""
+    try:
+        df = pd.read_csv(metadata_file, sep='\t')
+        errors = []
+        
+        # 检查必需的列是否存在
+        required_columns = ['SRR', 'paired', 'GSM', 'GSE']
+        missing_columns = [col for col in required_columns if col not in df.columns]
+        if missing_columns:
+            errors.append(f"Missing required columns: {', '.join(missing_columns)}")
+            return errors
+        
+        # 检查每一行的SRR和paired字段
+        for idx, row in df.iterrows():
+            row_num = idx + 2  # +2 because pandas is 0-indexed and we have header
+            
+            # 检查SRR字段
+            srr_value = row['SRR']
+            if pd.isna(srr_value) or str(srr_value).strip().upper() in ['NA', 'NAN', '']:
+                errors.append(f"Row {row_num}: SRR field is empty or NA")
+            
+            # 检查paired字段
+            paired_value = row['paired']
+            if pd.isna(paired_value) or str(paired_value).strip().upper() in ['NA', 'NAN', '']:
+                errors.append(f"Row {row_num}: paired field is empty or NA")
+            elif str(paired_value).strip().upper() not in ['PAIRED', 'SINGLE']:
+                errors.append(f"Row {row_num}: paired field must be 'PAIRED' or 'SINGLE', got '{paired_value}'")
+        
+        return errors
+    except Exception as e:
+        return [f"Error reading metadata file: {str(e)}"]
+
 def check_sra_files(metadata_file, sra_dir):
     """检查metadata文件中所有SRR对应的SRA文件是否存在"""
     try:
@@ -121,13 +154,19 @@ def check_sra_files(metadata_file, sra_dir):
         missing_files = []
         
         for _, row in df.iterrows():
-            srr_list = row['SRR'].strip().split(',')
+            # 检查SRR值是否为NaN或NA
+            srr_value = row['SRR']
+            if pd.isna(srr_value) or str(srr_value).strip().upper() in ['NA', 'NAN', '']:
+                continue  # 跳过无效的SRR值（这些应该已经在validate_metadata_file中被捕获）
+                
+            srr_list = str(srr_value).strip().split(',')
             
             for srr in srr_list:
                 srr = srr.strip()
-                sra_file = os.path.join(sra_dir, srr, f"{srr}.sra")
-                if not os.path.exists(sra_file):
-                    missing_files.append(sra_file)
+                if srr and srr.upper() not in ['NA', 'NAN']:  # 确保SRR值有效
+                    sra_file = os.path.join(sra_dir, srr, f"{srr}.sra")
+                    if not os.path.exists(sra_file):
+                        missing_files.append(sra_file)
         
         return missing_files
     except Exception as e:
@@ -184,7 +223,21 @@ def main():
 
     # 串行处理每个metadata文件
     for metadata_file in metadata_files:
-        print(f"Checking SRA files for {metadata_file}...")
+        print(f"Validating metadata file {metadata_file}...")
+        
+        # 首先验证metadata文件格式
+        validation_errors = validate_metadata_file(metadata_file)
+        
+        if validation_errors:
+            print(f"Skipping {metadata_file} - Metadata validation failed:")
+            for error in validation_errors:
+                print(f"  - {error}")
+            
+            skipped_tasks += 1
+            skipped_files.append(os.path.basename(metadata_file))
+            continue
+        
+        print(f"Metadata file {metadata_file} is valid. Checking SRA files...")
         
         # 检查SRA文件是否存在
         missing_files = check_sra_files(metadata_file, args.sra_dir)
