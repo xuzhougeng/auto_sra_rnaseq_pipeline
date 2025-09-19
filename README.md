@@ -1,46 +1,44 @@
+# RNA-seq Automation Pipeline
 
-# RNA-seq automation process pipeline 
+[中文版本](./README_zh.md)
 
-[English Vesion](./README_en.md)
+## Usage
 
-## 使用方法
-
-将这个仓库克隆到本地
+Clone this repository locally:
 
 ```bash
 git clone https://github.com/xuzhougeng/auto_sra_rnaseq_pipeline.git
 ```
 
-### 配置环境
+### Environment Setup
 
-snkeamek
+#### Snakemake
 
-```
+```bash
 conda create -n snakemake -c conda-forge python=3.11 -y
 conda run -n snakemake python -m \
-pip install snakemake==8.16 pandas  -i https://pypi.tuna.tsinghua.edu.cn/simple
+pip install snakemake==8.16 pandas -i https://pypi.tuna.tsinghua.edu.cn/simple
 ```
 
-R
+#### R
 
-```
+```bash
 conda create -c conda-forge -n r432 r-base==4.3.2 -y && \
 conda install -n r432 -y -c conda-forge -c bioconda bioconductor-deseq2=1.42.0 r-ashr=2.2.63 r-data.table
 conda install -n r432 -y -c conda-forge -c bioconda bioconductor-genomeinfodbdata=1.2.11 --force-reinstall
 ```
 
-gpsa
+#### gpsa Environment
 
-```
+```bash
 # micromamba
 conda create -n gpsa -c conda-forge -c bioconda \
- star=2.7.1a samtools fastp sra-tools deeptools pigz -y
-``` 
+    star=2.7.1a samtools fastp sra-tools deeptools pigz -y
+```
 
+### Build the STAR Index
 
-### 构建索引
-
-我们需要构建STAR索引，以及准备参考基因组对应的GTF
+Prepare a STAR index and the corresponding genome annotation (GTF):
 
 ```bash
 reference=/path/to/your/genome
@@ -52,9 +50,9 @@ STAR \
     --genomeFastaFiles ${reference}
 ```
 
-### 执行
+### Run the Pipeline
 
-创建一个项目文件夹，然后将我们仓库中的config.yaml 复制到该目录下，
+Create a project directory and copy `config.yaml` from this repository into it:
 
 ```bash
 mkdir results
@@ -62,76 +60,70 @@ cp /path/to/config.yaml results/
 cd results
 ```
 
-注意修改config.yaml的配置信息，其中metadata指的是存放metadata文件的目录，metadata文件必须以.txt结尾，否则不识别
+Update `config.yaml` with your settings. The `metadata` entry must point to the directory that stores metadata files, and every metadata file must end with `.txt`.
 
-### metadata文件格式要求
+### Metadata File Requirements
 
-metadata文件必须满足以下要求，否则程序会跳过处理：
+Metadata files must satisfy the following rules or they will be skipped:
 
-**必需列：**
+**Required columns**
 - GSM, GSE, gene, SRR, paired
 
-**数据完整性要求：**
-- SRR字段不能为空或NA值
-- paired字段不能为空或NA值，且必须是'PAIRED'或'SINGLE'
+**Data integrity**
+- `SRR` cannot be empty or `NA`
+- `paired` cannot be empty or `NA`, and must be either `PAIRED` or `SINGLE`
 
-**示例：**
+**Example**
 ```
 GSE     GSM     gene    method  celline group   group_name      type    platform        SRR     paired
 GSE251750       GSM7987315      SMCHD1  ko      LHCN-M2 control LHCN-M2 cells, wildtype RNA     SRA     GPL18573        SRR12345        PAIRED
 ```
 
-程序会在处理前自动验证metadata文件格式，发现问题的文件会被跳过并显示具体错误信息。
+The pipeline validates metadata files before they are processed. Files with problems are skipped and the specific error will be reported.
 
-运行方法
+Run the pipeline:
 
 ```bash
 export PATH=~/micromamba/envs/r432/bin/:~/micromamba/envs/gpsa/bin/:$PATH;
 ulimit -n 10240
 
-python3 /path/to/auto_sra_rnaseq_pipeline/run.py --cores 120  unfinished config.yaml --SNake
+python3 /path/to/auto_sra_rnaseq_pipeline/run.py --cores 120 unfinished config.yaml --SNake
 
-# unfinished指的是未完成任务的位置
-# config.yaml是你的配置文件
-# 79 表示任务数
+# unfinished is the directory that stores pending tasks
+# config.yaml is your configuration file
+# 79 represents the number of tasks
 ```
 
-如果任务失败，再次运行提醒中有 --unlock, 需要运行如下的代码
+If a run fails and suggests using `--unlock`, execute the following command:
 
 ```bash
-snakemake --configfile config.yaml -s auto_sra_rnaseq_pipeline/Snakefile  --unlock
+snakemake --configfile config.yaml -s auto_sra_rnaseq_pipeline/Snakefile --unlock
 ```
 
-如果通过Kill或者ctrl+C的方法停止已经运行的进程，已经移动到metadata中的文件不会移动回unfinished中，需要我们自己动手移动。
+If you stop the process with `kill` or `Ctrl+C`, files already moved into the metadata directory will not be moved back to `unfinished`, so you'll need to move them manually.
 
+## Configuration File Notes
 
-## 配置文件说明
+Thread counts per rule:
+- `pigz_threads`: 10
+- `fastp_threads`: 8
+- `star_threads`: 20
 
+SRA data path configuration:
+- `sra_data_path`: `"sra"`  # directory containing downloaded SRA files
 
-如下参数控制不同规则的运行所需要的线程数
+Notification settings:
 
-- pigz_threads: 10
-- fastp_threads: 8
-- star_threads: 20
+Email (currently only QQ Mail POP3 is supported). Set to `False` to disable.
+- `mail`: False
+- `sender`:
+- `sender_password`:
+- `mail_to`:
 
-SRA数据路径配置：
-- sra_data_path: "sra"  # 指定已下载SRA文件的存储路径
+iOS Bark notifications
+- `bark`: False
+- `bark_api`: `#"https://api.day.app/xxxxxxxxxxxxxxxxx"`
 
-如下参数和任务完成后的提醒有关
-
-邮件提醒（目前只支持qq邮箱的pop3协议）,设置为False表示不启用，
-
-- mail: False
-- sender: 
-- sender_password:  
-- mail_to: 
-
-IOS bark提醒
-
-- bark: False
-- bark_api: #"https://api.day.app/xxxxxxxxxxxxxxxxx"
-
-Feishu提醒
-
-- feishu: False
-- feishu_api: 
+Feishu notifications
+- `feishu`: False
+- `feishu_api`:
