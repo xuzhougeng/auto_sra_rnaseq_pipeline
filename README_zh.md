@@ -62,7 +62,7 @@ cp /path/to/config.yaml results/
 cd results
 ```
 
-注意修改config.yaml的配置信息，其中metadata指的是存放metadata文件的目录，metadata文件必须以.txt结尾，否则不识别
+注意修改config.yaml的配置信息，其中metadata指的是存放metadata文件的目录，metadata文件必须以.txt结尾，否则不识别。
 
 ### metadata文件格式要求
 
@@ -104,34 +104,10 @@ snakemake --configfile config.yaml -s auto_sra_rnaseq_pipeline/Snakefile  --unlo
 
 如果通过Kill或者ctrl+C的方法停止已经运行的进程，已经移动到metadata中的文件不会移动回unfinished中，需要我们自己动手移动。
 
+## 配置
+完整配置说明与示例请参考 `doc/config.md`。
 
-## 配置文件说明
+## 引用
+如果本项目对你有所帮助，请引用：
 
-
-如下参数控制不同规则的运行所需要的线程数
-
-- pigz_threads: 10
-- fastp_threads: 8
-- star_threads: 20
-
-SRA数据路径配置：
-- sra_data_path: "sra"  # 指定已下载SRA文件的存储路径
-
-如下参数和任务完成后的提醒有关
-
-邮件提醒（目前只支持qq邮箱的pop3协议）,设置为False表示不启用，
-
-- mail: False
-- sender: 
-- sender_password:  
-- mail_to: 
-
-IOS bark提醒
-
-- bark: False
-- bark_api: #"https://api.day.app/xxxxxxxxxxxxxxxxx"
-
-Feishu提醒
-
-- feishu: False
-- feishu_api: 
+Shipeng Guo, Zhougeng Xu, Xiangjun Dong, Dongjie Hu, Yanshuang Jiang, Qunxian Wang, Jie Zhang, Qian Zhou, Shengchun Liu, Weihong Song, GPSAdb: a comprehensive web resource for interactive exploration of genetic perturbation RNA-seq datasets, Nucleic Acids Research, Volume 51, Issue D1, 6 January 2023, Pages D964–D968, https://doi.org/10.1093/nar/gkac1066

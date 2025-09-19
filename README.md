@@ -19,12 +19,8 @@ This Snakemake workflow automates SRA-powered RNA-seq processing from raw archiv
 | Differential analysis | DESeq2 1.42.0 + ashr 2.2.63 | Shrinkage-based differential expression | `lfcShrink(..., type="ashr")` with groups from metadata |
 | Cleanup & notify | STAR, optional email/Bark/Feishu | Release shared-memory index and send run status | Toggle via `mail`, `bark`, `feishu` flags |
 
-### Key Configuration Values
-- `index`, `GTF`: paths to the STAR genome index and annotation.
-- `metadata`: tab-delimited metadata file used to drive sample processing.
-- `sra_data_path`: directory containing pre-downloaded `.sra` files.
-- `star_threads`, `fastp_threads`, `pigz_threads`: per-rule thread counts.
-- Notification credentials (`sender`, `sender_password`, API URLs) are only required when corresponding toggles are set to `True`.
+## Configuration
+See detailed settings and examples in `doc/config.md`.
 
 
 ## Usage
@@ -127,28 +123,7 @@ snakemake --configfile config.yaml -s auto_sra_rnaseq_pipeline/Snakefile --unloc
 
 If you stop the process with `kill` or `Ctrl+C`, files already moved into the metadata directory will not be moved back to `unfinished`, so you'll need to move them manually.
 
-## Configuration File Notes
+## Citation
+If this project helps your research, please cite:
 
-Thread counts per rule:
-- `pigz_threads`: 10
-- `fastp_threads`: 8
-- `star_threads`: 20
-
-SRA data path configuration:
-- `sra_data_path`: `"sra"`  # directory containing downloaded SRA files
-
-Notification settings:
-
-Email (currently only QQ Mail POP3 is supported). Set to `False` to disable.
-- `mail`: False
-- `sender`:
-- `sender_password`:
-- `mail_to`:
-
-iOS Bark notifications
-- `bark`: False
-- `bark_api`: `#"https://api.day.app/xxxxxxxxxxxxxxxxx"`
-
-Feishu notifications
-- `feishu`: False
-- `feishu_api`:
+Shipeng Guo, Zhougeng Xu, Xiangjun Dong, Dongjie Hu, Yanshuang Jiang, Qunxian Wang, Jie Zhang, Qian Zhou, Shengchun Liu, Weihong Song, GPSAdb: a comprehensive web resource for interactive exploration of genetic perturbation RNA-seq datasets, Nucleic Acids Research, Volume 51, Issue D1, 6 January 2023, Pages D964–D968, https://doi.org/10.1093/nar/gkac1066
