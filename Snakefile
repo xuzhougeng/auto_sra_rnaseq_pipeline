@@ -90,30 +90,10 @@ def get_input_data(wildcards):
 # SRA数据路径配置
 sra_data_path = config.get('sra_data_path', 'sra')
 
-localrules: all, get_sra, merge_data, merge_R1_data, merge_R2_data, data_conversion_single, data_conversion_pair, preload_star_index, cleanup_star_index
-
-# 预加载STAR索引到共享内存
-rule preload_star_index:
-    output:
-        flag = touch("logs/star_index_loaded.flag")
-    params:
-        index = config['index']
-    conda:
-        "envs/align.yaml"
-    priority: 100
-    log: "logs/star_preload.log"
-    shell:"""
-        echo "Preloading STAR index to shared memory..." > {log}
-        STAR --genomeDir {params.index} \
-             --runThreadN 1 \
-             --genomeLoad LoadAndExit \
-             >> {log} 2>&1
-        echo "STAR index preloaded successfully" >> {log}
-    """
+localrules: all, get_sra, merge_data, merge_R1_data, merge_R2_data, data_conversion_single, data_conversion_pair
 
 rule all:
     input:
-        "logs/star_index_loaded.flag",  # 确保索引先加载
         deseq_file,
         expr_matrix_file,
         bigwig_files,
@@ -151,8 +131,7 @@ include: "rules/paired_end_process.smk" # pair end
 # alignment
 rule align_and_count:
     input:
-        fastq = get_input_data,
-        flag = "logs/star_index_loaded.flag"  # 依赖索引预加载
+        fastq = get_input_data
     wildcard_constraints:
         sample="[A-Za-z0-9]+"
     params:
@@ -174,7 +153,6 @@ rule align_and_count:
     shell:"""
         STAR \
     	--genomeDir {params.index} \
-    	--genomeLoad LoadAndKeep \
     	--runThreadN {threads} \
     	--readFilesIn {input.fastq} \
     	--outFileNamePrefix 02_read_align/{params.prefix}_ \
@@ -251,42 +229,12 @@ rule DGE_analysis:
     """
 
 # 清理STAR共享内存索引
-rule cleanup_star_index:
-    input:
-        "05_DGE_analysis/{DB_ID}.Rds"  # 等待所有分析完成
-    output:
-        flag = touch("logs/star_index_cleaned.flag")
-    params:
-        index = config['index']
-    conda:
-        "envs/align.yaml"
-    priority: 1
-    log: "logs/star_cleanup.log"
-    shell:"""
-        echo "Cleaning up STAR shared memory index..." > {log}
-        STAR --genomeDir {params.index} \
-             --genomeLoad Remove \
-             >> {log} 2>&1 || echo "Index cleanup completed (or was already clean)" >> {log}
-        echo "STAR index cleanup completed" >> {log}
-    """
-
 
 onsuccess:
     print("Deleting the unnessary file")
     from shutil import rmtree
     if os.path.exists("02_read_align"):
         rmtree("02_read_align")
-    
-    # 清理STAR共享内存索引
-    print("Cleaning up STAR shared memory index...")
-    import subprocess
-    try:
-        subprocess.run([
-            "STAR", "--genomeDir", config['index'], "--genomeLoad", "Remove"
-        ], capture_output=True, check=False)
-        print("STAR index cleanup completed")
-    except Exception as e:
-        print(f"STAR cleanup warning: {e}")
     
     contents = "snakemake run successful\nFollowing jobs fininished:\n "+ "\n".join(deseq_file)
     if config['mail']:
@@ -297,17 +245,6 @@ onsuccess:
             msg_to=config['mail_to'])
 
 onerror:
-    # 清理STAR共享内存索引
-    print("Cleaning up STAR shared memory index after error...")
-    import subprocess
-    try:
-        subprocess.run([
-            "STAR", "--genomeDir", config['index'], "--genomeLoad", "Remove"
-        ], capture_output=True, check=False)
-        print("STAR index cleanup completed")
-    except Exception as e:
-        print(f"STAR cleanup warning: {e}")
-    
     contents = open(log, "r").read()
     if config['mail']:
     #if len(config["sender"]) > 0 and len(config["sender_password"]) > 0:
