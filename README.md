@@ -8,7 +8,6 @@ This Snakemake workflow automates SRA-powered RNA-seq processing from raw archiv
 
 | Stage | Tool (version) | Purpose | Key parameters |
 | --- | --- | --- | --- |
-| Index preload | STAR 2.7.1a | Load genome index into shared memory before alignment | `--genomeLoad LoadAndExit` |
 | SRA access | symlink + fasterq-dump (sra-tools 3.1.1) | Reuse locally downloaded `.sra` files and convert to FASTQ | `fasterq-dump sra/<SRR> -O sra` |
 | Read merging | coreutils `cat` | Combine multiple SRR runs per sample | Controlled by `srr_separator` (default `,`) |
 | Read QC | fastp | Trim/filter reads and generate QC reports | `-w {fastp_threads}` with JSON/HTML logs in `log/` |
