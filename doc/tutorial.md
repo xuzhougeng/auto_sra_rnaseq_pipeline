@@ -4,12 +4,64 @@
 
 本文以仓库内的示例元数据文件 `doc/D21122.txt` 为例，演示如何从准备环境、配置参数、准备 SRA 数据到运行流程并获取结果的完整步骤。
 
-## 前置条件
+## 环境准备（软件安装）
 
-- 已按 README 中的说明安装好依赖（Snakemake、sra-tools、fastp、STAR、samtools、deepTools、R 及 DESeq2 等）。
-- 已构建好与参考基因组对应的 STAR 索引与 GTF 注释文件。
+以下示例以 conda/micromamba 为例，创建 3 个环境，并通过 PATH 暴露给流程使用：
 
-参考：`README.md` 的 “Environment Setup” 与 “Build the STAR Index”。
+1) Snakemake 环境（用于调度流程）
+
+```bash
+conda create -n snakemake -c conda-forge python=3.11 -y
+conda run -n snakemake python -m \\
+  pip install snakemake==8.16 pandas -i https://pypi.tuna.tsinghua.edu.cn/simple
+```
+
+2) R 环境（用于差异分析）
+
+```bash
+conda create -c conda-forge -n r432 r-base==4.3.2 -y && \\
+conda install -n r432 -y -c conda-forge -c bioconda \\
+  bioconductor-deseq2=1.42.0 r-ashr=2.2.63 r-data.table
+conda install -n r432 -y -c conda-forge -c bioconda \\
+  bioconductor-genomeinfodbdata=1.2.11 --force-reinstall
+```
+
+3) 对齐与数据处理环境（STAR、samtools、sra-tools、fastp、deepTools 等）
+
+```bash
+conda create -n gpsa -c conda-forge -c bioconda \\
+  star=2.7.1a samtools fastp sra-tools deeptools pigz -y
+```
+
+4) 运行前将所需可执行文件加入 PATH（按实际安装路径替换）：
+
+```bash
+export PATH=~/micromamba/envs/r432/bin/:~/micromamba/envs/gpsa/bin/:$PATH
+```
+
+建议检查关键工具版本：
+
+```bash
+snakemake --version
+STAR --version
+Rscript --version
+fasterq-dump --version
+samtools --version
+```
+
+5) 预先构建 STAR 索引与准备 GTF 注释（示例）：
+
+```bash
+reference=/path/to/your/genome.fa
+index=/path/to/star/index
+STAR \\
+  --runThreadN 50 \\
+  --runMode genomeGenerate \\
+  --genomeDir "$index" \\
+  --genomeFastaFiles "$reference"
+```
+
+更多配置项说明见 `doc/config.md`。
 
 ## 第一步：准备工作目录与配置
 
