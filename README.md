@@ -23,8 +23,9 @@ This Snakemake workflow automates SRA-powered RNA-seq processing from raw archiv
 - Configuration guide: `doc/config.md`
 - Workflow structure: `doc/workflow_relationships.md`
 
-
-
+## Issues
+Questions or problems? Please open an issue at:
+https://github.com/xuzhougeng/auto_sra_rnaseq_pipeline/issues
 
 ## Citation
 If this project helps your research, please cite:
